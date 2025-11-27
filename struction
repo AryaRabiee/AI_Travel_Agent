@@ -1,0 +1,50 @@
+travel-assistant/
+│
+├── app/
+│   ├── api/
+│   │   ├── v1/
+│   │   │   ├── routes_chat.py        # مسیرهای مربوط به چت‌بات
+│   │   │   ├── routes_health.py      # برای چک‌سلامتی سرویس
+│   │   │   └── routes_weather.py     # (اختیاری) دریافت اطلاعات هواشناسی
+│   │   └── __init__.py
+│   │
+│   ├── core/
+│   │   ├── config.py                 # تنظیمات، API keys، env
+│   │   ├── logger.py                 # لاگینگ
+│   │   └── utils.py                  # توابع کمکی
+│   │
+│   ├── models/
+│   │   └── message.py                # پیکره‌بندی پیام‌ها، Pydantic Models
+│   │
+│   ├── llm/
+│   │   ├── client.py                 # اتصال به Groq یا OpenAI
+│   │   ├── prompts.py                # system prompt + templates
+│   │   ├── extractor.py              # استخراج intent + slots
+│   │   └── generator.py              # تولید پاسخ نهایی چت‌بات
+│   │
+│   ├── rag/
+│   │   ├── indexer.py                # ساخت embedding index
+│   │   ├── retriever.py              # جستجو
+│   │   └── data/                     # داده‌های مقصدها/هزینه/آب‌وهوا
+│   │
+│   ├── services/
+│   │   ├── travel_planner.py         # منطق تحلیل سفر و پیشنهاد
+│   │   ├── weather_service.py        # دریافت آب‌وهوا (API)
+│   │   └── destination_service.py    # دیتا و منطق شهرها
+│   │
+│   ├── main.py                       # نقطه شروع FastAPI
+│   └── __init__.py
+│
+├── tests/
+│   ├── test_chat.py
+│   ├── test_extractor.py
+│   └── test_rag.py
+│
+├── scripts/
+│   ├── build_index.py                # ساخت embedding index اولیه
+│   └── seed_data.py                  # لود دیتاست شهرها/قیمت‌ها
+│
+├── requirements.txt or pyproject.toml
+├── README.md
+├── .env                              # API Keys
+└── Dockerfile
