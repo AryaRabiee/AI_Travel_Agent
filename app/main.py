@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from llm.client import ask_model
+from llm.client import ask_model ,rag_answer
 from models.message import UserMessage, BotResponse
 
 app = FastAPI()
@@ -10,5 +10,5 @@ def read_root():
 
 @app.post("/chat", response_model=BotResponse)
 def chat(user_message: UserMessage):
-    reply = ask_model(user_message.message)
+    reply = rag_answer(user_message.message)
     return BotResponse(reply=reply)
