@@ -5,11 +5,14 @@ import numpy as np
 import sys
 from utils.weather import get_weather_data
 from rag.embedding import cosine_similarity , get_embeding
-from rag.vector_search import find_best_city_or_none , DATA_PATH
+from rag.vector_search import  DATA_PATH , llm_select_best_city
 from .prompts import SYSTEM_PROMPT , ASISTANT_PROMPTS
-from .config import MODEL_NAME , OPENROUTER_API_KEY , URL
+from .config import MODEL_NAME_META_70 , OPENROUTER_API_KEY , URL
+from state.travel_related import is_travel_related
+from state.memory import history
+from state.handle_user import handle_user_message
+from rag.retrieval import retrieve_top_cities
 
-history = [] 
 def ask_model(context: str, message: str, best_city: str) -> str:
     global history
 
@@ -35,7 +38,7 @@ def ask_model(context: str, message: str, best_city: str) -> str:
     messages.append({"role": "user", "content": message})
 
     payload = {
-        "model": MODEL_NAME,
+        "model": MODEL_NAME_META_70,
         "messages": messages
     }
 
@@ -77,7 +80,7 @@ def ask_model_fallback(message: str) -> str:
     messages.append({"role": "user", "content": message})
 
     payload = {
-        "model": MODEL_NAME,
+        "model": MODEL_NAME_META_70,
         "messages": messages
     }
 
@@ -92,17 +95,24 @@ def ask_model_fallback(message: str) -> str:
 
     return reply
 
-def rag_answer(user_question):
+def rag_answer(message):
+    user_profile = handle_user_message(message)
+    if not isinstance(user_profile, dict):
+        print("Profile NOT complete — sending question:", user_profile)
+        return user_profile 
+    candidates = retrieve_top_cities(user_profile)
+    best_city = llm_select_best_city(message, candidates)
+    return best_city
 
-    best_city = find_best_city_or_none(user_question)
+    # best_city = find_best_city_or_none(user_question)
 
-    if best_city is None:
-        return ask_model_fallback(user_question)
+    # if best_city is None:
+    #     return ask_model_fallback(user_question)
 
-    db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
-    if isinstance(db, list):
-        db = {item["city"]: item for item in db}
+    # db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
+    # if isinstance(db, list):
+    #     db = {item["city"]: item for item in db}
 
-    city_context = db[best_city]["text"]
+    # city_context = db[best_city]["text"]
 
-    return ask_model(city_context, user_question, best_city)
+    # return ask_model(city_context, user_question, best_city)

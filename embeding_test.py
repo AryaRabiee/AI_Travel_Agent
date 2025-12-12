@@ -9,7 +9,7 @@ url = "https://api.jina.ai/v1/embeddings"
 
 cities_data = []  
 
-DATA_DIR = "data"
+DATA_DIR = "data3"
 
 for filename in os.listdir(DATA_DIR):
     if filename.endswith(".md"):
@@ -38,7 +38,7 @@ for filename in os.listdir(DATA_DIR):
             "embedding": embedding
         })
 
-with open("cities_embeddings.json", "w", encoding="utf-8") as f:
+with open("cities_embeddings_new.json", "w", encoding="utf-8") as f:
     json.dump(cities_data, f, ensure_ascii=False, indent=2)
 
-print("DONE! Embeddings saved in cities_embeddings.json")
+print("DONE! Embeddings saved in cities_embeddings_new.json")
