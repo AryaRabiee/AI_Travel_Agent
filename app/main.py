@@ -8,7 +8,7 @@ app = FastAPI()
 def read_root():
     return {"message": "سلام! من دستیار سفر شما هستم. پیام خود را به /chat بفرستید."}
 
-@app.post("/chat", response_model=BotResponse)
+@app.post("/chat")
 def chat(user_message: UserMessage):
     reply = rag_answer(user_message.message)
-    return BotResponse(reply=reply)
+    return reply

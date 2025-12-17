@@ -59,29 +59,26 @@ def llm_select_best_city(user_profile, candidates):
         print(f"City: {city}\nScore: {score}")
         cities_block += f"City: {city}\nScore: {score}\nInfo: {text}\n\n"
 
+
+    
+
+
     system = """
-You are a senior travel recommendation engine.
+You are a travel recommendation re-ranking engine.
 
-Your task:
-- Evaluate each candidate city based on the USER PROFILE.
-- DO NOT rely only on the similarity score.
-- Score each candidate from 0 to 100 based on:
-
-  * Interest match
-  * Budget match
-  * Travel duration fit
-  * Travel style fit
-  * Season/climate suitability (if mentioned)
-  * Cultural/nature/food alignment
+Input:
+- User profile
+- Candidate cities
+- Algorithm score (primary)
+- Context information (secondary)
 
 Rules:
-- After scoring all cities, choose ONLY the city with the highest score.
-- Return ONLY the city name.
-You MUST return ONLY the name of the city.
-No explanations.
-No scoring details.
-No extra text.
-No newlines.
+- Use the algorithm score as the primary signal.
+- You may adjust each city score by at most ±10% based on semantic fit.
+- Rank all cities based on adjusted score.
+- Return ALL the city with score.
+- OUTPUT FORMAT MUST BE a JSON object: { "city_name": score, ... }
+- Do NOT include any extra text or explanation.
 """
 
     user = f"""
@@ -91,10 +88,6 @@ USER PROFILE:
 CANDIDATE CITIES (from RAG):
 {cities_block}
 
-Now:
-1. Score each city using the criteria.
-2. Select ONLY the highest scoring city.
-3. Return ONLY the city name.
 """
 
     payload = {
@@ -108,4 +101,12 @@ Now:
     r = requests.post(URL, headers=headers, json=payload)
     result = r.json()["choices"][0]["message"]["content"]
 
-    return result.strip()
+    try:
+        # parse خروجی JSON
+        top_cities = json.loads(result)
+    except json.JSONDecodeError:
+        print("خطا: خروجی LLM JSON معتبر نیست!")
+        print("RAW OUTPUT:", result)
+        return None
+
+    return top_cities
