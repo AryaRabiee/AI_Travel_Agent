@@ -10,9 +10,11 @@ BETA = 0.4
 
 def top_city(user_message):
     print("Start")
-    user_profile = handle_user_message(user_message)
-    if not isinstance(user_profile , dict):
-        return user_profile
+    user_profile_or_question = handle_user_message(user_message)
+    if not isinstance(user_profile_or_question , dict):
+        print("User profile incomplete, asking for more info...")
+        return {"need_more_info": True, "message": user_profile_or_question}
+    user_profile = user_profile_or_question
     print("The user profile is" , user_profile)
     candidate = retrieve_top_cities(user_profile)
     llm_score = llm_select_best_city(user_profile , candidate)
@@ -37,5 +39,6 @@ def top_city(user_message):
     print("final_score :",final_score)
     top_city = final_score.idxmax()
     print("top3_city :",top_city , "type top city is" , type(top_city))
-    return top_city
+    return {"need_more_info": False, "top_city": top_city}
+
 

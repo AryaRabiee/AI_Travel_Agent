@@ -17,56 +17,37 @@ from CBF_Recommendation.recommandation_score import top_city
 from .continue_chat import continue_chat
 
 
-conversation_state = {
-    "phase" :"recommendation",
-    "best_city" : None,
-    "user_profile" : None
-}
 
 
 def ask_model(best_city: str) -> str:
     global history
 
-    weather = get_weather_data(best_city)
-    print(f"weather {best_city} is {weather}")
-
     url = URL
-
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
 
-
     messages = [
-        {"role": "system", "content":"""
+        {"role": "system", "content": """
 You are a professional AI travel assistant.
 
-You must:
-- Speak Persian
-- Start the conversation yourself
-- Tell the user the best city for them
-- Briefly explain why (max 2 sentences)
-- Ask if they want a travel plan
+Your task:
+- Inform the user of the BEST city selected for them.
+- Speak in a friendly, natural Persian tone.
+- Briefly explain why this city fits their preferences.
+- Ask the user politely if they would like a detailed travel plan.
 
 Rules:
-- Never mention algorithms or scores
-- Keep it friendly and concise
-- End with a clear yes/no question
-"""},
+- Do NOT mention scores, algorithms, or internal reasoning.
+- Keep the explanation short (2–3 sentences).
+- End with a clear question asking for permission to create a travel plan.
+"""}
     ]
 
     messages += history
 
-    messages.append({        "role": "assistant",
-            "content": f"""
-بهترین مقصد برای سفر شما **{best_city}** 🌍
-
-این شهر با توجه به علایق و شرایطی که گفتید، تعادل خیلی خوبی بین تجربه سفر، آب‌وهوا و سبک گردشگری داره.
-
-اگر دوست دارید، می‌تونم براتون یه برنامه سفر کامل هم بچینم. مایل هستید؟
-    """
-    })
+    messages.append({"role": "user", "content": f"بهترین شهر برای من چیست؟ (City: {best_city})"})
 
     payload = {
         "model": MODEL_NAME_META_70,
@@ -80,10 +61,10 @@ Rules:
 
     reply = res.json()["choices"][0]["message"]["content"]
 
+    history.append({"role": "user", "content": f"بهترین شهر برای من چیست؟ (City: {best_city})"})
     history.append({"role": "assistant", "content": reply})
 
     return reply
-
 
 def ask_model_fallback(message: str) -> str:
     global history
@@ -125,28 +106,27 @@ def ask_model_fallback(message: str) -> str:
 
     return reply
 
+
+best_city = None
 def rag_answer(user_message):
-    top = top_city(user_message)
-    print("top is" , top)
-    return top
-    # global history
-
-    # if not history:
-    #     print("Not History")
-    #     best_city = top_city(user_message)
-    #     print(best_city)
-        
-    #     return ask_model(best_city)
+    global history, best_city
     
-    # history.append({
-    #     "role":"user", "content":user_message
+    if best_city is None:
+        # result = top_city(user_message)
+        result = 'تهران'
 
-    # })
-    # print("Go to continue_chat")
-    
-    # return continue_chat()
 
-    
+
+        best_city = result
+        print("best_city is", best_city)
+        return ask_model(best_city)
+
+    history.append({
+        "role": "user",
+        "content": user_message
+    })
+
+    return continue_chat(best_city, user_message)
     
     # user_profile = handle_user_message(message)
     # if not isinstance(user_profile, dict):
