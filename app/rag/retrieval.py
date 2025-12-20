@@ -2,6 +2,8 @@ import json
 from .embedding import get_embeding
 from .embedding import cosine_similarity
 from state.handle_user import handle_user_message
+import faiss
+import numpy as np
 
 
 DATA_PATH = "rag/cities_embeddings_new.json"
@@ -22,16 +24,40 @@ def retrieve_top_cities(user_profile):
     )
 
     query_emb = get_embeding(profile_text)
+    query_emb = np.array([query_emb] , dtype="float32")
+    faiss.normalize_L2(query_emb)
+    index = faiss.read_index("rag/cities_flat.index")
+    k = 5
+    D , I = index.search(query_emb , k)
+    print("D" , D , "I" , I)
 
+    # db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
+
+    # scored = []
+
+    # for city in db:
+    #     score = cosine_similarity(query_emb, city["embedding"])
+    #     scored.append((city["city"], score, city["text"]))
+
+    # # sort top-k
+    # scored.sort(key=lambda x: x[1], reverse=True)
+    # return scored[:TOP_K]
     db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
 
-    scored = []
+    top_cities = []
+    for idx, score in zip(I[0], D[0]):
+        print("idx" , idx)
+        print("Score" , score)
+        city_info = db[idx]
+        print("City_info" , city_info)
+        top_cities.append((
+         city_info["city"],
+            float(score),
+            city_info["text"],)
+            
+        )
+    top_cities.sort(key=lambda x : x[1] , reverse=True)
 
-    for city in db:
-        score = cosine_similarity(query_emb, city["embedding"])
-        scored.append((city["city"], score, city["text"]))
+    print("retrival candidate" , top_cities[:TOP_K])
 
-    # sort top-k
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return scored[:TOP_K]
-
+    return top_cities[:TOP_K]

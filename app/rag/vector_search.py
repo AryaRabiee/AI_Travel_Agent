@@ -7,7 +7,7 @@ from llm.config import URL , OPENROUTER_API_KEY , MODEL_NAME_META_70
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))   
-DATA_PATH = os.path.join(BASE_DIR, "embeding_test.json")
+DATA_PATH = os.path.join(BASE_DIR, "rag/cities_embeddings_new.json")
 
 
 SIM_THRESHOLD = 0.4

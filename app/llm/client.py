@@ -120,8 +120,11 @@ def rag_answer(user_message):
 
 
     if conversation_state["phase"] == "INIT":
-        # best_city = top_city(user_message)
-        best_city = 'رشت'
+        result = top_city(user_message)
+        if result["need_more_info"]:
+            return result["message"]
+        best_city = result["top_city"]
+        print(best_city)
         conversation_state["best_city"] = best_city
         conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
         return ask_model(best_city)
@@ -133,17 +136,10 @@ def rag_answer(user_message):
         else:
             conversation_state["phase"] = "FREE_CHAT"
             return ask_model_fallback(user_message)
-        
-    if intent == "PLAN_REQUEST":
-        conversation_state["phase"] = "PLANNING"
-        return continue_chat(best_city , user_message)
-    elif intent == "FREE_CHAT":
-        return ask_model_fallback(user_message)
 
 
     # if conversation_state["phase"] == "PLANNING":
     #     return continue_chat(conversation_state["best_city"], user_message)
-
     return ask_model_fallback(user_message)
     
     # user_profile = handle_user_message(message)
