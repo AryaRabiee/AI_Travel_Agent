@@ -3,6 +3,12 @@ import json
 import requests
 from state.memory import history
 
+def user_want_plan(message):
+    msg = message.strip().lower()
+    return msg in ['باشه',"بده","اره","بله","یه پلن بده","اره میخوام پلن بدی","پلن میخوام","باشه بده","مایل هستم","آره","yes"]
+
+
+
 
 def get_city_plan(best_city):
     with open("llm/cities_embeddings_new.json" , "r" , encoding="utf-8") as f:
@@ -27,13 +33,39 @@ def continue_chat(best_city , user_message):
     messages = [
         {
             "role": "system",
-            "content": """
+            "content": f"""
 You are a professional AI travel assistant.
 
 You are given a detailed travel document for a city.
-Use ONLY this document to create a travel plan.
-Do not invent places not mentioned in the document.
-Speak in Persian.
+Use ONLY this document to answer the user.
+Do NOT invent places, activities, or details not mentioned in the document.
+
+Language:
+- Always speak in Persian.
+
+Rules:
+1. ONLY create a full, day-by-day travel plan if the user EXPLICITLY asks for a travel plan.
+   Examples:
+   - "برنامه سفر بده"
+   - "پلن سفر می‌خوام"
+   - "برام برنامه بچین"
+
+2. If the user asks a QUESTION about the existing plan
+   (for example: budget, duration, style, city name, or explanation),
+   answer ONLY that question briefly.
+   Do NOT repeat the full travel plan.
+
+3. If the user asks to MODIFY the plan
+   (for example: cheaper, shorter, more luxury),
+   create a revised travel plan using ONLY the given document.
+
+4. If the user asks for the travel plan AGAIN explicitly,
+   then provide the full travel plan again.
+
+5. If the question is NOT about travel planning,
+   answer politely and briefly, without mentioning the plan.
+
+Be precise, concise, and helpful.
 """
         }
     ]

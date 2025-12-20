@@ -14,57 +14,48 @@ from state.handle_user import handle_user_message
 from rag.retrieval import retrieve_top_cities
 from CBF_Recommendation.model_weight import get_weight_for_feature
 from CBF_Recommendation.recommandation_score import top_city
-from .continue_chat import continue_chat
+from .continue_chat import continue_chat , user_want_plan
 
+conversation_state = {
+    "phase": "INIT",  
+    # INIT
+    # CITY_ANNOUNCED
+    # WAITING_FOR_PLAN_CONFIRM
+    # PLANNING
+    # FREE_CHAT
+    "best_city": None
+}
 
 
 
 def ask_model(best_city: str) -> str:
-    global history
-
-    url = URL
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    global history, conversation_state
 
     messages = [
-        {"role": "system", "content": """
+        {
+            "role": "system",
+            "content": """
 You are a professional AI travel assistant.
+Speak Persian.
+Explain briefly why the city fits the user.
+Ask if they want a travel plan.
+"""
+        },
+        {
+            "role": "assistant",
+            "content": f"""
+بهترین شهر برای سفر شما **{best_city}** 🌍  
+این شهر با توجه به علایق و شرایطی که گفتید انتخاب مناسبی برای شماست.
 
-Your task:
-- Inform the user of the BEST city selected for them.
-- Speak in a friendly, natural Persian tone.
-- Briefly explain why this city fits their preferences.
-- Ask the user politely if they would like a detailed travel plan.
-
-Rules:
-- Do NOT mention scores, algorithms, or internal reasoning.
-- Keep the explanation short (2–3 sentences).
-- End with a clear question asking for permission to create a travel plan.
-"""}
+اگر دوست دارید، می‌تونم براتون یک برنامه سفر کامل هم آماده کنم. مایل هستید؟
+"""
+        }
     ]
 
-    messages += history
+    history.extend(messages)
+    conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
 
-    messages.append({"role": "user", "content": f"بهترین شهر برای من چیست؟ (City: {best_city})"})
-
-    payload = {
-        "model": MODEL_NAME_META_70,
-        "messages": messages
-    }
-
-    res = requests.post(url, headers=headers, json=payload)
-
-    if res.status_code != 200:
-        return f"Error: {res.text}"
-
-    reply = res.json()["choices"][0]["message"]["content"]
-
-    history.append({"role": "user", "content": f"بهترین شهر برای من چیست؟ (City: {best_city})"})
-    history.append({"role": "assistant", "content": reply})
-
-    return reply
+    return messages[-1]["content"]
 
 def ask_model_fallback(message: str) -> str:
     global history
@@ -106,27 +97,54 @@ def ask_model_fallback(message: str) -> str:
 
     return reply
 
+def detect_intent(message):
+    plan_keywords = ["برنامه", "پلن سفر", "سفر بچین"]
+    question_keywords = ["بودجه", "چند روز", "کجا", "اسم شهر"]
+    
+    if any(k in message for k in plan_keywords):
+        return "PLAN_REQUEST"
+    # elif any(k in message for k in question_keywords):
+    #     return "PLAN_QUESTION"
+    else:
+        return "FREE_CHAT"
+
+
 
 best_city = None
 def rag_answer(user_message):
-    global history, best_city
-    
-    if best_city is None:
-        # result = top_city(user_message)
-        result = 'تهران'
+    global history, best_city , conversation_state
+    intent = detect_intent(user_message)
+
+    print("State now is :" , conversation_state["phase"])
+    print("intent now is :" , intent)
 
 
-
-        best_city = result
-        print("best_city is", best_city)
+    if conversation_state["phase"] == "INIT":
+        # best_city = top_city(user_message)
+        best_city = 'رشت'
+        conversation_state["best_city"] = best_city
+        conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
         return ask_model(best_city)
 
-    history.append({
-        "role": "user",
-        "content": user_message
-    })
+    if conversation_state["phase"] == "WAITING_FOR_PLAN_CONFIRM":
+        if user_want_plan(user_message):
+            conversation_state["phase"] = "PLANNING"
+            return continue_chat(conversation_state["best_city"], "برنامه سفر لطفاً")
+        else:
+            conversation_state["phase"] = "FREE_CHAT"
+            return ask_model_fallback(user_message)
+        
+    if intent == "PLAN_REQUEST":
+        conversation_state["phase"] = "PLANNING"
+        return continue_chat(best_city , user_message)
+    elif intent == "FREE_CHAT":
+        return ask_model_fallback(user_message)
 
-    return continue_chat(best_city, user_message)
+
+    # if conversation_state["phase"] == "PLANNING":
+    #     return continue_chat(conversation_state["best_city"], user_message)
+
+    return ask_model_fallback(user_message)
     
     # user_profile = handle_user_message(message)
     # if not isinstance(user_profile, dict):
