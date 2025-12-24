@@ -9,22 +9,22 @@ from rag.vector_search import  DATA_PATH , llm_select_best_city
 from .prompts import SYSTEM_PROMPT , ASISTANT_PROMPTS
 from .config import MODEL_NAME_META_70 , OPENROUTER_API_KEY , URL
 from state.travel_related import is_travel_related
-from state.memory import history
+from state.memory import history , conversation_state
 from state.handle_user import handle_user_message
 from rag.retrieval import retrieve_top_cities
 from CBF_Recommendation.model_weight import get_weight_for_feature
 from CBF_Recommendation.recommandation_score import top_city
 from .continue_chat import continue_chat , user_want_plan
 
-conversation_state = {
-    "phase": "INIT",  
-    # INIT
-    # CITY_ANNOUNCED
-    # WAITING_FOR_PLAN_CONFIRM
-    # PLANNING
-    # FREE_CHAT
-    "best_city": None
-}
+# conversation_state = {
+#     "phase": "INIT",  
+#     # INIT
+#     # CITY_ANNOUNCED
+#     # WAITING_FOR_PLAN_CONFIRM
+#     # PLANNING
+#     # FREE_CHAT
+#     "best_city": None
+# }
 
 
 

@@ -1,6 +1,6 @@
 OPENROUTER_API_KEY = "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"
 JINA_API_KEY = "jina_7fedde13af3440c88d1cad18c001c003y14JgGjTbn-LcR3M2h2rOcLT82sI"
-
+OPENROUTER_API_KEY_EMBEDDING = "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"
 MODEL_NAME_META_70 = "meta-llama/llama-3.3-70b-instruct:free"
 MODEL_NAME_HERMAS = "nousresearch/hermes-3-llama-3.1-405b:free"
 # MODEL_NAME = "nousresearch/hermes-3-llama-3.1-405b:free"

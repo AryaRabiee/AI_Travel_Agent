@@ -1,9 +1,10 @@
-from llm.config import MODEL_EMBEDING_NAME_JINA , JINA_API_KEY
+from llm.config import MODEL_EMBEDING_NAME_JINA , JINA_API_KEY , OPENROUTER_API_KEY_EMBEDDING , MODEL_EMBEDING_NAME
 import requests
 import numpy as np
 
 def get_embeding(text:str):
     url = "https://api.jina.ai/v1/embeddings"
+    # url = "https://openrouter.ai/api/v1/embeddings"
 
     headers = {
         "Authorization": f"Bearer {JINA_API_KEY}",

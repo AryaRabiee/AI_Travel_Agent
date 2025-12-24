@@ -10,6 +10,7 @@ DATA_PATH = "rag/cities_embeddings_new.json"
 TOP_K = 3
 
 def retrieve_top_cities(user_profile):
+    print("Start retrive")
 
     print("profile user is :",user_profile,"type is :" , type(user_profile))
     if not isinstance(user_profile, dict):
@@ -22,14 +23,12 @@ def retrieve_top_cities(user_profile):
         f"Budget: {user_profile.get('budget')}\n"
         f"Description: {user_profile.get('description')}"
     )
-
     query_emb = get_embeding(profile_text)
     query_emb = np.array([query_emb] , dtype="float32")
     faiss.normalize_L2(query_emb)
     index = faiss.read_index("rag/cities_flat.index")
     k = 5
     D , I = index.search(query_emb , k)
-    print("D" , D , "I" , I)
 
     # db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
 
