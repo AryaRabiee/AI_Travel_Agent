@@ -2,7 +2,8 @@ from litellm import completion
 import json
 from .config import MODEL_NAME_HERMAS , MODEL_NAME_META_70 , OPENROUTER_API_KEY
 from state.memory import history
-from state.memory import conversation_state
+from state.memory import conversation_state_memory
+api = "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"
 # from llm.continue_chat import get_city_plan
 def get_city_plan(best_city):
     with open("llm/cities_embeddings_new.json" , "r" , encoding="utf-8") as f:
@@ -23,24 +24,36 @@ MODELS = {
     "plan":MODEL_NAME_HERMAS
 }
 
-def call_llm(model_name , messages):
-    resp = completion(model=model_name ,api_key=OPENROUTER_API_KEY, messages = messages)
+def call_llm(primary_model, backup_model, messages):
+    resp = completion(model=primary_model ,api_key=api, messages = messages)
     return resp["choices"][0]["message"]["content"]
 
-def try_fall_back(primary_model, backup_model, messages):
-    try:
-        return call_llm(model_name=primary_model , messages=messages)
-    except Exception as e:
-        print(f"Primary model failed: {e}, using backup...")
-        return call_llm(model_name=backup_model , messages=messages)
+def call_llm_with_fallback(primary_model, backup_model, messages):
+    resp = completion(
+        model=primary_model,
+        fallbacks=[backup_model],
+        api_key=api,
+        messages=messages,
+        num_retries = 2
+    )
+    
+    return resp.choices[0].message.content.strip()
 
 
 def intent_agent(user_message):
     messages = [
-        {"role": "system", "content": "You are a classifier. Reply ONLY with 'Yes' or 'No'."},
-        {"role": "user", "content": f"Is the following message about travel? {user_message}"}
+                {"role": "system", "content": """
+        You are a travel assistant classifier.
+        Classify the user's message into one of three categories:
+        - 'Yes' if the message is about travel.
+        - 'SMALLTALK' if the message is just greetings or casual conversation (hello, how are you, etc.).
+        - 'No' if the message is not related to travel.
+
+        Reply with ONLY one of these three keywords: Yes, SMALLTALK, No.
+        """},
+        {"role": "user", "content": f"what do you think about this user's message? {user_message}"},
     ]
-    return try_fall_back("openrouter/meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", messages).strip().lower()
+    return call_llm_with_fallback("openrouter/meta-llama/llama-3.3-70b-instruct:free", "openrouter/nousresearch/hermes-3-llama-3.1-405b:free", messages).strip().lower()
 
 
 
@@ -83,7 +96,7 @@ CANDIDATE CITIES (from RAG):
         {"role": "user", "content": user},
     ]
 
-    result = try_fall_back("openrouter/meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", messages)
+    result = call_llm_with_fallback("openrouter/openai/gpt-oss-120b:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
     print("result in model manager" , result , "The type is:" , type(result))
     try:
         top_cities = json.loads(result)
@@ -157,9 +170,9 @@ Be precise, concise, and helpful.
         """
     })
 
-    res = try_fall_back("nousresearch/hermes-3-llama-3.1-405b:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
-    if res.status_code != 200:
-        return f"Error: {res.text}"
+    res = call_llm_with_fallback("nousresearch/hermes-3-llama-3.1-405b:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
+    # if res.status_code != 200:
+    #     return f"Error: {res.text}"
 
     reply = res.json()["choices"][0]["message"]["content"]
 
@@ -168,3 +181,128 @@ Be precise, concise, and helpful.
 
     
     return reply
+
+
+def fall_back(user_message):
+    global history
+
+
+
+    messages = [
+        {"role": "system", "content":
+            f"""
+        You are a Travel assistant.
+        Answer in a friendly Persian tone.
+        Be helpful and natural.
+        Use your knowledge only to answer questions about travel, cities, itineraries, or related topics.
+        If the user asks for specific city info you don't know, respond:
+        «اطلاعات دقیقی از این موضوع ندارم»
+        If the user's {user_message} is not related to travel, respond:
+        «من فقط یک دستیار سفر هستم و نمی‌توانم به این سوال پاسخ بدهم»
+        but if the user's {user_message} want to know about some city asnwer his question
+        and if the user's want to collabrate and  talk to you just like(hello , how are you? ...) answer his question friendly dont talk about travel just answer
+        Do not invent information unrelated to travel.
+
+            """
+
+
+        }
+    ]
+
+    messages += history
+
+    messages.append({"role": "user", "content": user_message})
+
+
+    res = call_llm_with_fallback("openrouter/meta-llama/llama-3.3-70b-instruct:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
+    print(res , type(res))
+    # if res.status_code != 200:
+    #     return f"Error: {res.text}"
+
+    # reply = res.json()["choices"][0]["message"]["content"]
+
+    history.append({"role": "user", "content": user_message})
+    history.append({"role": "assistant", "content": res})
+
+    return res
+
+
+
+def detect_intent(user_message):
+    messages = [
+        {"role": "system", "content":
+         "Classify user intent. Reply ONLY with one word: SMALLTALK, TRAVEL, OFFTOPIC"},
+        {"role": "user", "content": user_message}
+    ]
+    res = call_llm_with_fallback("openrouter/meta-llama/llama-3.3-70b-instruct:free","openrouter/meta-llama/llama-3.3-70b-instruct:free", messages)
+    return res.strip().upper()
+
+
+
+def chat(user_message):
+    global history
+
+    a = False
+
+    messages = [
+        {"role": "system", "content":
+            f"""
+You are a friendly Persian-speaking Travel Assistant. Follow these rules carefully:
+
+1. **Travel Start Question (only once per conversation):**
+   - Only ask this question **if and only if** the user clearly shows interest in travel, cities, or destinations.  
+   - Ask exactly once per conversation:  
+     "میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدم؟"
+   - **Do not include any extra text, explanation, or greeting** with this question.  
+   - **Never ask this question more than once.**
+   - After asking, **stop and wait for the user's answer**. Do not continue the conversation, give suggestions, or interpret the answer. The backend system will handle the user's reply.
+
+2. **Smalltalk and General Conversation:**
+   - Respond naturally and friendly in Persian for casual chat.  
+   - Do not force travel content.  
+
+3. **Travel Information Questions:**
+   - Answer accurately about cities, destinations, or travel information.  
+   - If you don’t know the answer, respond: "اطلاعات دقیقی از این موضوع ندارم."  
+
+4. **Non-Travel Questions:**
+   - Politely respond: "من فقط یک دستیار سفر هستم و نمی‌توانم به این سوال پاسخ بدهم."  
+
+5. **Important Behavior Rules:**
+   - Never invent information unrelated to travel.  
+   - Maintain a friendly Persian tone.  
+   - Only ask the start question **once per conversation**, and only when the conversation clearly goes toward travel.  
+   - After asking, wait for the user to respond. Do not continue chatting or take any action until the backend processes the user's answer.  
+
+**Goal:** Ensure that whenever the conversation clearly indicates interest in travel or cities, the model asks **exactly once**:  
+"میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدم؟"  
+No extra messages or explanations should be included. After asking, **pause completely** and let the backend handle the user's reply. Handle smalltalk and travel information naturally in all other cases.
+
+
+
+
+
+
+
+            """
+
+
+        }
+    ]
+
+    messages += history
+
+    messages.append({"role": "user", "content": user_message})
+
+
+    res = call_llm_with_fallback("openrouter/openai/gpt-oss-120b:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
+    print(res , type(res))
+    # if res.status_code != 200:
+    #     return f"Error: {res.text}"
+
+    # reply = res.json()["choices"][0]["message"]["content"]
+
+    history.append({"role": "user", "content": user_message})
+    history.append({"role": "assistant", "content": res})
+
+    return res

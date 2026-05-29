@@ -2,7 +2,6 @@ from .state_user import user_profile
 
 def save_answer_to_profile(answer: str):
     if user_profile["step"] == 0:
-        print("answer is" , answer)
         user_profile["days"] = answer
     elif user_profile["step"] == 1:
         user_profile["weather"] = answer

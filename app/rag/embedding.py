@@ -1,17 +1,17 @@
 from llm.config import MODEL_EMBEDING_NAME_JINA , JINA_API_KEY , OPENROUTER_API_KEY_EMBEDDING , MODEL_EMBEDING_NAME
 import requests
 import numpy as np
-
+api = "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"
 def get_embeding(text:str):
-    url = "https://api.jina.ai/v1/embeddings"
-    # url = "https://openrouter.ai/api/v1/embeddings"
+    #url = "https://api.jina.ai/v1/embeddings"
+    url = "https://openrouter.ai/api/v1/embeddings"
 
     headers = {
-        "Authorization": f"Bearer {JINA_API_KEY}",
+        "Authorization": f"Bearer {api}",
         "Content-Type": "application/json"
     }
 
-    data={"model" : MODEL_EMBEDING_NAME_JINA , "input" :[text] , "task": "text-matching"}
+    data={"model" : MODEL_EMBEDING_NAME , "input" :[text] , "task": "text-matching"}
 
     response = requests.post(url , headers=headers , json=data)
     response_json = response.json()

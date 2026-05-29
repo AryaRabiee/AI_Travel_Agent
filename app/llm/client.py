@@ -9,12 +9,38 @@ from rag.vector_search import  DATA_PATH , llm_select_best_city
 from .prompts import SYSTEM_PROMPT , ASISTANT_PROMPTS
 from .config import MODEL_NAME_META_70 , OPENROUTER_API_KEY , URL
 from state.travel_related import is_travel_related
-from state.memory import history , conversation_state
+from state.memory import history , conversation_state_memory
 from state.handle_user import handle_user_message
 from rag.retrieval import retrieve_top_cities
 from CBF_Recommendation.model_weight import get_weight_for_feature
 from CBF_Recommendation.recommandation_score import top_city
 from .continue_chat import continue_chat , user_want_plan
+from state.route import route_user_message
+from .model_manager import chat
+from state.travel_question_step import next_travel_question
+from state.state_user import user_profile
+from state.validation import validation_answer
+from llm.log import logger
+
+city = {
+    "rasht":"رشت",
+    "shiraz":"شیراز",
+    "tehran":"تهران",
+    "yazd":"یزد",
+    "mashhad":"مشهد",
+    "esfahan":"اصفهان",
+}
+
+QUESTIONS = [
+    {"key": "days", "type": "number", "min": 1, "max": 30},
+    {"key": "weather", "type": "enum", "values": ["گرم", "خنک", "سرد"]},
+    {"key": "places", "type": "enum", "values": ["شهری", "طبیعت", "تاریخی"]},
+    {"key": "budget", "type": "enum", "values": ["زیاد", "متوسط", "کم"]},
+    {"key": "interests", "type": "enum", "values": ["طبیعت", "نفریح", "خرید"]},
+    {"key": "description", "type": "description"},
+
+
+]
 
 # conversation_state = {
 #     "phase": "INIT",  
@@ -29,7 +55,7 @@ from .continue_chat import continue_chat , user_want_plan
 
 
 def ask_model(best_city: str) -> str:
-    global history, conversation_state
+    global history, conversation_state_memory
 
     messages = [
         {
@@ -53,7 +79,8 @@ Ask if they want a travel plan.
     ]
 
     history.extend(messages)
-    conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
+    conversation_state_memory["phase"] = "WAITING_FOR_PLAN_CONFIRM"
+    conversation_state["stage"] = "WAIT_FOR_PLAN"
 
     return messages[-1]["content"]
 
@@ -69,11 +96,22 @@ def ask_model_fallback(message: str) -> str:
 
     messages = [
         {"role": "system", "content":
-            "You are a friendly Persian assistant.\n"
-            "You may use your general knowledge.\n"
-            "Be helpful and answer naturally.\n"
-            "If user asks for specific city info you don’t know, say:\n"
-            "«اطلاعات دقیقی از این موضوع ندارم»"
+            f"""
+        You are a Travel assistant.
+        Answer in a friendly Persian tone.
+        Be helpful and natural.
+        Use your knowledge only to answer questions about travel, cities, itineraries, or related topics.
+        If the user asks for specific city info you don't know, respond:
+        «اطلاعات دقیقی از این موضوع ندارم»
+        If the user's {message} is not related to travel, respond:
+        «من فقط یک دستیار سفر هستم و نمی‌توانم به این سوال پاسخ بدهم»
+        but if the user's {message} want to know about some city asnwer his question
+        and if the user's want to collabrate and  talk to you just like(hello , how are you? ...) answer his question
+        Do not invent information unrelated to travel.
+
+            """
+
+
         }
     ]
 
@@ -97,68 +135,198 @@ def ask_model_fallback(message: str) -> str:
 
     return reply
 
-def detect_intent(message):
-    plan_keywords = ["برنامه", "پلن سفر", "سفر بچین"]
-    question_keywords = ["بودجه", "چند روز", "کجا", "اسم شهر"]
+# def detect_intent(message):
+#     plan_keywords = ["برنامه", "پلن سفر", "سفر بچین"]
+#     question_keywords = ["بودجه", "چند روز", "کجا", "اسم شهر"]
     
-    if any(k in message for k in plan_keywords):
-        return "PLAN_REQUEST"
-    # elif any(k in message for k in question_keywords):
-    #     return "PLAN_QUESTION"
-    else:
-        return "FREE_CHAT"
-
+#     if any(k in message for k in plan_keywords):
+#         return "WAIT_FOR_PLAN"
+#     # elif any(k in message for k in question_keywords):
+#     #     return "WAIT_FOR_PLAN"
+#     else:
+#         return "NORMAL"
+# # def user_wants_new_city(message):
+# #     keywords = ["شهر دیگه", "عوض کن", "یه شهر دیگه", "مقصد دیگه"]
+# #     return any(k in message for k in keywords)
 
 
 best_city = None
+
+
+
+
+user_profile = {
+    "is_travel": None,
+    "step": 0,
+    "days": None,
+    "weather": None,
+    "places": None,
+    "budget": None,
+    "interests": None,
+    "description": None
+}
+
+conversation_state = {
+    "WAITING_CONFIRMATION": False,
+    "TRAVEL_MODEL": False,
+    "WAIT":False,
+    "CHOOSE_CITY":False,
+    "WAIT_FOR_PLAN":False,
+    "COLLECT_PROFILE":False,
+    "NORMAL":True,
+
+}
+
+QUESTIONS = [
+    {"key": "days", "type": "number", "min": 1, "max": 30},
+    {"key": "weather", "type": "enum", "values": ["گرم", "خنک", "سرد"]},
+    {"key": "places", "type": "enum", "values": ["شهری", "طبیعت", "تاریخی"]},
+    {"key": "budget", "type": "enum", "values": ["کم", "متوسط", "زیاد"]},
+    {"key": "interests", "type": "enum", "values": ["طبیعت", "تفریح", "خرید"]},
+    {"key": "description", "type": "description"}
+]
+
+# def next_travel_question():
+#     step = user_profile["step"]
+#     if step < len(QUESTIONS):
+#         q = QUESTIONS[step]
+#         if q["type"] == "number":
+#             return f"{q['key']}؟"
+#         elif q["type"] == "enum":
+#             return f"{q['key']}؟ ({', '.join(q['values'])})"
+#         else:
+#             return f"{q['key']}؟"
+#     return None
+
+def create_profile_v0(message):
+    logger.info("start func create profile v0")
+    user_profile_or_question = handle_user_message(message)
+    if not isinstance(user_profile_or_question , dict):
+        logger.info("user profile %s" , user_profile_or_question)
+        logger.info("User profile incomplete, asking for more info...")
+        return {"need_more_info": True, "message": user_profile_or_question}
+    user_profile = user_profile_or_question
+    logger.info("finish question and now the profile is %s" , user_profile)
+    return {"need_more_info": False, "profile": user_profile}
+
+
+# def rag_answer(user_message):
+#     result = test(user_message)
+#     if result["need_more_info"]:
+#         return result["message"]
+#     return True
+
+
+
+
+
+
+
+
 def rag_answer(user_message):
-    global history, best_city , conversation_state
-    intent = detect_intent(user_message)
+    stage = conversation_state.get("stage", "NORMAL")
+    logger.info("stage is %s", stage)
 
-    print("State now is :" , conversation_state["phase"])
-    print("intent now is :" , intent)
-
-
-    if conversation_state["phase"] == "INIT":
-        result = top_city(user_message)
-        if result["need_more_info"]:
-            return result["message"]
-        best_city = result["top_city"]
-        print(best_city)
-        conversation_state["best_city"] = best_city
-        conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
-        return ask_model(best_city)
-
-    if conversation_state["phase"] == "WAITING_FOR_PLAN_CONFIRM":
+    if stage == "WAITING_CONFIRMATION":
+        logger.info("Go to WAITING_CONFIRMATION")
         if user_want_plan(user_message):
-            conversation_state["phase"] = "PLANNING"
-            return continue_chat(conversation_state["best_city"], "برنامه سفر لطفاً")
+            conversation_state["stage"] = "COLLECT_PROFILE"
+            logger.info("Go to COLLECT_PROFILE line 0")
+            profile = create_profile_v0(user_message)
+            logger.info("profile is %s" , profile)
+            if profile["need_more_info"]:
+                logger.info("profile message is %s" , profile["message"])
+                return profile["message"]
         else:
-            conversation_state["phase"] = "FREE_CHAT"
-            return ask_model_fallback(user_message)
+            logger.info("changed to normal after collect")
+            conversation_state["stage"] = "NORMAL"
+            return chat(user_message)
+
+    if stage == "COLLECT_PROFILE":
+        logger.info("Go to COLLECT_PROFILE line 1")
+        if user_message.strip() == "0":
+            conversation_state["stage"] = "NORMAL"
+            return chat("از حالت سوال اومدیم بیرون . یکم درباره سفر ها بگو کلا و سعی کن خیلییی کوتاه و خلاصه و حتما فارسی بگی")
+
+        profile = create_profile_v0(user_message)
+        logger.info("in line 1 profile is %s" , profile)
+        if profile["need_more_info"]:
+            return profile["message"]
+        logger.info("changed state to choose city")
+        conversation_state["profile"] = profile
+        conversation_state["stage"] = "CHOOSE_CITY"
+        print(conversation_state)
+        stage = conversation_state["stage"]
+    if stage == "CHOOSE_CITY":
+        logger.info("Go to CHOOSE_CITY")
+        city = top_city(conversation_state["profile"])
+        conversation_state["stage"] = "NORMAL"
+        stage = conversation_state["stage"]
+        return ask_model(city[city["top_city"]])
+
+    reply = chat(user_message)
+    if reply.strip() == "میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدم؟":
+        conversation_state["stage"] = "WAITING_CONFIRMATION"
+
+    return reply
 
 
-    # if conversation_state["phase"] == "PLANNING":
-    #     return continue_chat(conversation_state["best_city"], user_message)
-    return ask_model_fallback(user_message)
-    
-    # user_profile = handle_user_message(message)
-    # if not isinstance(user_profile, dict):
-    #     print("Profile NOT complete — sending question:", user_profile)
-    #     return user_profile 
-    # candidates = retrieve_top_cities(user_profile)
-    # best_city = llm_select_best_city(message, candidates)
-    # return best_city
 
-    # best_city = find_best_city_or_none(user_question)
 
-    # if best_city is None:
-    #     return ask_model_fallback(user_question)
 
-    # db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
-    # if isinstance(db, list):
-    #     db = {item["city"]: item for item in db}
+# def rag_answer(user_message):
+    # global conversation_state, best_city, history
 
-    # city_context = db[best_city]["text"]
+    # phase = conversation_state["phase"]
+    # print("state is", phase)
 
-    # return ask_model(city_context, user_question, best_city)
+    # if phase == "INIT":
+    #     result = top_city(user_message)
+
+    #     if result["need_more_info"]:
+    #         return result["message"]
+
+    #     best_city = result["top_city"]
+    #     conversation_state["best_city"] = best_city
+    #     conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
+
+    #     return ask_model(best_city)
+
+    # if phase == "WAITING_FOR_PLAN_CONFIRM":
+    #     if user_want_plan(user_message):
+    #         conversation_state["phase"] = "PLANNING"
+    #         return continue_chat(best_city, "برنامه سفر لطفاً")
+    #     else:
+    #         conversation_state["phase"] = "FALL_BACK"
+    #         return ask_model_fallback(user_message)
+
+    # if phase == "FALL_BACK":
+
+    #     if user_want_plan(user_message):
+    #         conversation_state["phase"] = "PLANNING"
+    #         return continue_chat(best_city, "برنامه سفر لطفاً")
+
+    #     if user_wants_new_city(user_message):
+    #         conversation_state["phase"] = "INIT"
+    #         conversation_state["best_city"] = None
+    #         return "باشه  بگو چه سفری مدنظرت هست تا یه شهر جدید پیشنهاد بدم."
+
+    #     if is_travel_related(user_message):
+    #         conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
+    #         return ask_model_fallback(user_message)
+
+    #     return (
+    #         "من فقط دستیار سفر هستم 🌍\n"
+    #         "اگر درباره مقصد یا برنامه سفر سوالی دارید خوشحال میشم کمک کنم."
+    #     )
+
+    # # -------- PLANNING --------
+    # if phase == "PLANNING":
+
+    #     if user_wants_new_city(user_message):
+    #         conversation_state["phase"] = "INIT"
+    #         conversation_state["best_city"] = None
+    #         return "باشه  بگو چه سفری مدنظرت هست تا از اول بررسی کنیم."
+
+    #     return continue_chat(best_city, user_message)
+

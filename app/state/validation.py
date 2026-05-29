@@ -1,5 +1,5 @@
 import re
-
+from llm.log import logger
 
 QUESTIONS = {
     0: {
@@ -28,8 +28,7 @@ QUESTIONS = {
 
 def validation_answer(step, user_message, questions):
     q = questions[step]
-    print("question is ", questions)
-    print("q is " ,q)
+
 
     if q["type"] == "number":
         numbers = re.findall(r"\d+", user_message)

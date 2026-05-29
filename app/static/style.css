@@ -7,19 +7,19 @@
 body {
     margin: 0;
     font-family: 'Vazirmatn', sans-serif;
-    background: #e0e6f0; /* روشن‌تر */
+    background: #e0e6f0;
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     direction: rtl;
-    color: #1e293b; /* متن تیره برای کنتراست */
+    color: #1e293b;
 }
 
 .app-bg {
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at top, #f0f4fc, #d9e2f2); /* روشن‌تر */
+    background: radial-gradient(circle at top, #f0f4fc, #d9e2f2);
     z-index: -1;
 }
 
@@ -27,10 +27,10 @@ body {
 .chat-container {
     width: 420px;
     height: 620px;
-    background: rgba(255, 255, 255, 0.85); /* روشن و گلس */
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
     border-radius: 20px;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.2); /* ملایم‌تر */
+    box-shadow: 0 30px 80px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -42,7 +42,7 @@ body {
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: linear-gradient(135deg, #4ade80, #22d3ee); /* شاداب‌تر */
+    background: linear-gradient(135deg, #4ade80, #22d3ee);
     color: #0f172a;
 }
 
@@ -77,10 +77,15 @@ body {
 
 .message {
     max-width: 80%;
-    padding: 12px 16px;
-    margin-bottom: 14px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
     border-radius: 16px;
-    line-height: 1.7;
+    line-height: 1.5;
+    word-spacing: 0.15em;   /* فاصله بین کلمات */
+    letter-spacing: 0.02em; /* فاصله بین حروف */
+    white-space: pre-wrap;  /* حفظ فاصله‌ها و شکستن خطوط */
+    direction: rtl;
+    text-align: right;
     animation: fadeUp 0.3s ease;
 }
 
@@ -97,6 +102,14 @@ body {
     margin-left: auto;
     border-bottom-left-radius: 4px;
     color: #1e293b;
+}
+
+/* ===== پیام اولیه جمع و جور ===== */
+.message.bot.initial {
+    max-width: 60%;       /* کوتاه‌تر از بقیه */
+    padding: 6px 10px;    /* فضای داخلی کمتر */
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 /* ===== Input ===== */
@@ -117,6 +130,8 @@ body {
     padding: 12px;
     color: #1e293b;
     outline: none;
+    direction: rtl;
+    text-align: right;
 }
 
 .chat-input input::placeholder {
@@ -141,12 +156,6 @@ body {
 
 /* ===== Animations ===== */
 @keyframes fadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(6px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
 }

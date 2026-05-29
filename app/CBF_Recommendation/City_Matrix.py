@@ -2,7 +2,7 @@ import pandas as pd
 
 
 data = {
-    "city": ["تهران", "مشهد", "اصفهان","یزد","رشت","شیراز"],
+    "city": ["tehran", "mashhad", "esfahan","yazd","rasht","shiraz"],
     "religious": [0.1, 1.0, 0.3 , 0.25 , 0.1 , 0.3],
     "historical": [0.55, 0.45, 1.0 , 0.9 , 0.3 , 0.9],
     "modern_city": [1.0, 0.3, 0.7 , 0.4 , 0.4 , 0.7],

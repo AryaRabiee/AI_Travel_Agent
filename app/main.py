@@ -4,11 +4,13 @@ from models.message import UserMessage, BotResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_swagger import patch_fastapi
 
-app = FastAPI()
+app = FastAPI(title="AI Travel Assistant")
+# patch_fastapi(app)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # برای توسعه
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

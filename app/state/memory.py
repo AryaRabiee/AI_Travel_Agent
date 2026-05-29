@@ -2,7 +2,7 @@ history = [
     
 ]
 
-conversation_state = {
+conversation_state_memory = {
     "phase": "INIT",
     "best_city": None
 }

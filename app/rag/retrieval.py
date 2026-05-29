@@ -6,7 +6,7 @@ import faiss
 import numpy as np
 
 
-DATA_PATH = "rag/cities_embeddings_new.json"
+DATA_PATH = "rag/cities_embeddings_new_open.json"
 TOP_K = 3
 
 def retrieve_top_cities(user_profile):
@@ -14,7 +14,7 @@ def retrieve_top_cities(user_profile):
 
     print("profile user is :",user_profile,"type is :" , type(user_profile))
     if not isinstance(user_profile, dict):
-        print("❌ user_profile is not a dict:", type(user_profile), user_profile)
+        print(" user_profile is not a dict:", type(user_profile), user_profile)
         raise TypeError("user_profile must be a dict!")
     profile_text = (
         f"Days: {user_profile.get('days')}\n"
@@ -26,7 +26,7 @@ def retrieve_top_cities(user_profile):
     query_emb = get_embeding(profile_text)
     query_emb = np.array([query_emb] , dtype="float32")
     faiss.normalize_L2(query_emb)
-    index = faiss.read_index("rag/cities_flat.index")
+    index = faiss.read_index("rag/cities_flat_open.index")
     k = 5
     D , I = index.search(query_emb , k)
 

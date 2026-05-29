@@ -1,18 +1,29 @@
-from llm.config import URL , MODEL_NAME_META_70 , OPENROUTER_API_KEY
+from llm.config import URL , MODEL_NAME_META_70 , OPENROUTER_API_KEY , MODEL_NAME_OPENAI
 import requests
 import json
+from llm.log import logger
+api = "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"
+test_url = "https://openrouter.ai/api/v1"
 
-def get_weight_for_feature(message: str):
+def get_weight_for_feature(user_profile: str):
+    profile_text = f"""
+        days: {user_profile["profile"]['days']}
+        weather: {user_profile["profile"]['weather']}
+        places: {user_profile["profile"]['places']}
+        budget: {user_profile["profile"]['budget']}
+        interests: {user_profile["profile"]['interests']}
+        description: {user_profile["profile"]['description']}
+        """
     url = URL
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {api}",
         "Content-Type": "application/json"
     }
 
     messages = [
         {"role": "system", "content":"""
-                                You are an AI assistant that reads a user message and returns a score for each travel feature.
+                                You are an AI assistant that reads a user profile and returns a score for each travel feature.
                                 Features: religious, historical, modern_city, shopping, nightlife, expensive, hot, cold, four_seasons, nature
                                 Rules:
                                 - Output MUST be a valid JSON object.
@@ -21,25 +32,27 @@ def get_weight_for_feature(message: str):
                                 - Only output the features listed above.
                                 - You should give the score for all feature
 """},
-        {"role": "user", "content":message},
+        {"role": "user", "content":profile_text},
     ]
 
     payload = {
-        "model": MODEL_NAME_META_70,
+        "model": MODEL_NAME_OPENAI,
         "messages": messages
     }
 
     response = requests.post(url, json=payload, headers=headers)
 
     if response.status_code != 200:
-        print("ERROR:", response.text)
+        logger.error("ERROR: %s", response.text)
         return False
 
     scores = response.json()["choices"][0]["message"]["content"].strip().lower()
     try:
         user_weights = json.loads(scores)
-        print(user_weights , type(user_weights))
-    except json.JSONDecodeError:
-        print("خطا: JSON خروجی درست نیست!")
+        logger.debug("User weights: %s, Type: %s", user_weights, type(user_weights))
+    except json.JSONDecodeError as e:
+        logger.error("JSON Error: %s", e)
+        logger.error("RAW: %s", scores)
+        return {}
 
     return user_weights
