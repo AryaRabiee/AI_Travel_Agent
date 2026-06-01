@@ -107,80 +107,127 @@ CANDIDATE CITIES (from RAG):
 
     return top_cities
 
-def plan_agent(best_city, user_message,):
-    city_plan_text = get_city_plan(best_city)
-    
-    if city_plan_text is None:
-        return "متأسفانه برای این شهر هنوز برنامه سفری ندارم."
+def plan_agent(best_city, candidate,days):
+    # city_plan_text = get_city_plan(best_city)
+    user_message = f"لطفا بهم به اندازه {days} روز برنامه سفر بده . این هم از مکان های برگزیده {candidate}"
     
     messages = [
         {
             "role": "system",
             "content": f"""
-You are a professional AI travel assistant.
+    You are a professional AI Travel Planner.
 
-You are given a detailed travel document for a city.
-Use ONLY this document to answer the user.
-Do NOT invent places, activities, or details not mentioned in the document.
+    Language Rules:
+    - Always answer in Persian.
+    - Use a friendly and professional tone.
+    - Write naturally like a travel expert.
+    - Never answer in English.
 
-Language:
-- Always speak in Persian.
+    You will receive:
+    1. A city name.
+    2. A list of selected attractions.
+    3. The number of travel days.
 
-Rules:
-1. ONLY create a full, day-by-day travel plan if the user EXPLICITLY asks for a travel plan.
-   Examples:
-   - "برنامه سفر بده"
-   - "پلن سفر می‌خوام"
-   - "برام برنامه بچین"
+    Your task:
+    Create a personalized day-by-day travel itinerary.
 
-2. If the user asks a QUESTION about the existing plan
-   (for example: budget, duration, style, city name, or explanation),
-   answer ONLY that question briefly.
-   Do NOT repeat the full travel plan.
+    Important Rules:
 
-3. If the user asks to MODIFY the plan
-   (for example: cheaper, shorter, more luxury),
-   create a revised travel plan using ONLY the given document.
+    1. Use ONLY the attractions provided in the candidate list.
 
-4. If the user asks for the travel plan AGAIN explicitly,
-   then provide the full travel plan again.
+    2. NEVER invent:
+    - new attractions
+    - new museums
+    - new restaurants
+    - new parks
+    - new activities
+    - any place not present in the candidate list
 
-5. If the question is NOT about travel planning,
-   answer politely and briefly, without mentioning the plan.
+    3. The itinerary MUST contain exactly {days} travel days.
 
-Be precise, concise, and helpful.
-"""
+    4. Organize attractions logically across the days.
+
+    5. Try to balance the itinerary:
+    - avoid placing all major attractions on one day
+    - distribute activities reasonably
+    - avoid repetition
+
+    6. For each day:
+    - mention the places to visit
+    - briefly explain why they are interesting
+    - provide a natural travel suggestion
+
+    7. Do NOT output JSON.
+
+    8. Do NOT output Python dictionaries.
+
+    9. Do NOT output bullet-point databases.
+
+    10. Write the result as a real travel itinerary.
+
+    11. If there are more attractions than needed:
+    - prioritize higher-priority attractions first
+
+    12. If there are fewer attractions than needed:
+    - distribute the available attractions across the days
+    - do NOT invent new places
+
+    13. Never repeat the same attraction multiple times unless absolutely necessary.
+
+    Output Format:
+
+    برنامه سفر {days} روزه برای [CITY]
+
+    روز اول:
+    ...
+
+    روز دوم:
+    ...
+
+    روز سوم:
+    ...
+
+    and so on...
+
+    The final answer should feel like a real travel plan created by a human travel advisor.
+    """
         }
     ]
 
     messages += history
 
-    messages.append({
-        "role": "user",
-        "content": f"""
-        City: {best_city}
+    messages.append(
+        {
+            "role": "user",
+            "content": f"""
+    شهر انتخاب شده:
+    {best_city}
 
-        Travel document:
-        {city_plan_text}
+    تعداد روزهای سفر:
+    {days}
 
-        User request:
-        {user_message}
+    مکان‌های منتخب:
 
-        Please create a practical travel plan.
-        """
-    })
+    {candidate}
 
-    res = call_llm_with_fallback("nousresearch/hermes-3-llama-3.1-405b:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
+    لطفاً بر اساس این اطلاعات یک برنامه سفر کامل و کاربردی تهیه کن.
+    """
+        }
+    )
+
+    res = call_llm_with_fallback("openrouter/openai/gpt-oss-120b:free","openrouter/meta-llama/llama-3.3-70b-instruct:free",messages)
+    print(type(res))
+    print(res)
     # if res.status_code != 200:
     #     return f"Error: {res.text}"
 
-    reply = res.json()["choices"][0]["message"]["content"]
+    # reply = res.json()["choices"][0]["message"]["content"]
 
     history.append({"role": "user", "content": user_message})
-    history.append({"role": "assistant", "content": reply})
+    history.append({"role": "assistant", "content": res})
 
     
-    return reply
+    return res
 
 
 def fall_back(user_message):

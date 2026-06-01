@@ -9,27 +9,20 @@ from rag.vector_search import  DATA_PATH , llm_select_best_city
 from .prompts import SYSTEM_PROMPT , ASISTANT_PROMPTS
 from .config import MODEL_NAME_META_70 , OPENROUTER_API_KEY , URL
 from state.travel_related import is_travel_related
-from state.memory import history , conversation_state_memory
+from state.memory import history , conversation_state_memory , cities
 from state.handle_user import handle_user_message
 from rag.retrieval import retrieve_top_cities
 from CBF_Recommendation.model_weight import get_weight_for_feature
 from CBF_Recommendation.recommandation_score import top_city
-from .continue_chat import continue_chat , user_want_plan
+from .travel_plan import places , user_want_plan
 from state.route import route_user_message
-from .model_manager import chat
+from .model_manager import chat , plan_agent
 from state.travel_question_step import next_travel_question
 from state.state_user import user_profile
 from state.validation import validation_answer
 from llm.log import logger
 
-city = {
-    "rasht":"رشت",
-    "shiraz":"شیراز",
-    "tehran":"تهران",
-    "yazd":"یزد",
-    "mashhad":"مشهد",
-    "esfahan":"اصفهان",
-}
+
 
 QUESTIONS = [
     {"key": "days", "type": "number", "min": 1, "max": 30},
@@ -174,6 +167,7 @@ conversation_state = {
     "WAIT_FOR_PLAN":False,
     "COLLECT_PROFILE":False,
     "NORMAL":True,
+    "top_city":None
 
 }
 
@@ -219,7 +213,14 @@ def create_profile_v0(message):
 
 
 
-
+    # profile_text = f"""
+    #     days: {user_profile["profile"]['days']}
+    #     weather: {user_profile["profile"]['weather']}
+    #     places: {user_profile["profile"]['places']}
+    #     budget: {user_profile["profile"]['budget']}
+    #     interests: {user_profile["profile"]['interests']}
+    #     description: {user_profile["profile"]['description']}
+    #     """
 
 
 
@@ -260,9 +261,19 @@ def rag_answer(user_message):
     if stage == "CHOOSE_CITY":
         logger.info("Go to CHOOSE_CITY")
         city = top_city(conversation_state["profile"])
+        print(f"city is {city}")
+        print(f"conversation_state is {conversation_state}")
+        conversation_state["top_city"] = city["top_city"]
         conversation_state["stage"] = "NORMAL"
         stage = conversation_state["stage"]
-        return ask_model(city[city["top_city"]])
+        return ask_model(cities[city["top_city"]])
+    
+    if stage =="WAIT_FOR_PLAN":
+        if user_want_plan(user_message):
+            print("start plan")
+            candidate = places(conversation_state["profile"] , conversation_state["top_city"])
+            print("candidate is" , candidate)
+            return plan_agent(conversation_state["top_city"] ,candidate,conversation_state["profile"]["profile"]["days"] )
 
     reply = chat(user_message)
     if reply.strip() == "میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدم؟":
