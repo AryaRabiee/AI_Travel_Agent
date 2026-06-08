@@ -348,6 +348,8 @@ def detect_intent_with_openai(user_message ,recent_history, current_city):
                     User wants travel recommendations or help choosing a destination.
                     city_info
                     User asks about a city, attractions, culture, transportation, tourism, hotels, restaurants, or travel information related to a specific city.
+                    Note:If the user's message contains only a city name and nothing else,
+                    do NOT classify it as city_info. 
                     weather
                     User asks about weather, temperature, climate, rain, forecast, or seasonal conditions.
                     generate_plan
@@ -410,6 +412,34 @@ def detect_intent_with_openai(user_message ,recent_history, current_city):
                     "goal":"null"
                     }}
 
+                    Rule:
+                    If the user's message contains only a city name and nothing else,
+                    do NOT classify it as city_info.
+
+                    Examples:
+
+                    User:
+                    مشهد
+
+                    Output:
+                    {{
+                    "intent": "general_chat",
+                    "city": "Mashhad",
+                    "days": null,
+                    "goal": null
+                    }}
+
+                    User:
+                    رشت
+
+                    Output:
+                    {{
+                    "intent": "general_chat",
+                    "city": "Rasht",
+                    "days": null,
+                    "goal": null
+                    }}
+                 
                     User:
                     رشت چه جاهای دیدنی داره؟
 
