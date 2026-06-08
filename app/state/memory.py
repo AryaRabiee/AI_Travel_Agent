@@ -14,6 +14,16 @@ cities = {
     "yazd":"یزد",
     "mashhad":"مشهد",
     "esfahan":"اصفهان",
+    
+}
+
+cities_p = {
+    "رشت":"rasht",
+    "شیراز":"shiraz",
+    "تهران":"tehran",
+    "یزد":"yazd",
+    "مشهد":"mashhad",
+    "اصفهان":"esfahan",
 }
 CITY_SIGNATURE = {
     "رشت": "nature",
@@ -31,3 +41,12 @@ intrest_dict = {
     "شهری":"recreational",
     "زیارت":"religious"
 }
+import re
+
+def translate(city):
+    if re.fullmatch(r"[A-Za-z]+", city):
+        city_per =cities[city]
+        return city_per , city
+    else:
+        city_en = cities_p[city]
+        return city , city_en

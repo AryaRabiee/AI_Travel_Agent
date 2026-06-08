@@ -1,7 +1,7 @@
 from llm.config import MODEL_EMBEDING_NAME_JINA , JINA_API_KEY , OPENROUTER_API_KEY_EMBEDDING , MODEL_EMBEDING_NAME
 import requests
 import numpy as np
-api = "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"
+api = "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"
 def get_embeding(text:str):
     #url = "https://api.jina.ai/v1/embeddings"
     url = "https://openrouter.ai/api/v1/embeddings"

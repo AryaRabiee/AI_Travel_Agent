@@ -8,20 +8,20 @@ from rag.embedding import cosine_similarity , get_embeding
 from rag.vector_search import  DATA_PATH , llm_select_best_city
 from .prompts import SYSTEM_PROMPT , ASISTANT_PROMPTS
 from .config import MODEL_NAME_META_70 , OPENROUTER_API_KEY , URL
-from state.travel_related import is_travel_related
-from state.memory import history , conversation_state_memory , cities
+from state.memory import history , conversation_state_memory , cities , translate
 from state.handle_user import handle_user_message
 from rag.retrieval import retrieve_top_cities
 from CBF_Recommendation.model_weight import get_weight_for_feature
 from CBF_Recommendation.recommandation_score import top_city
 from .travel_plan import places , user_want_plan
-from state.route import route_user_message
-from .model_manager import chat , plan_agent
+# from state.route import route_user_message
+from .model_manager import chat , plan_agent , weather_city_model , city_info_model , modify_plan_model ,chat_open_ai , direct_generate_plan , compare_two_city_model
 from state.travel_question_step import next_travel_question
-from state.state_user import user_profile
+from state.state_user import user_profile , conversation_state
 from state.validation import validation_answer
 from llm.log import logger
-
+from route.intent import handleIntent 
+from route.weather_intent import get_weather_data 
 
 
 QUESTIONS = [
@@ -128,19 +128,16 @@ def ask_model_fallback(message: str) -> str:
 
     return reply
 
-# def detect_intent(message):
-#     plan_keywords = ["برنامه", "پلن سفر", "سفر بچین"]
-#     question_keywords = ["بودجه", "چند روز", "کجا", "اسم شهر"]
-    
-#     if any(k in message for k in plan_keywords):
-#         return "WAIT_FOR_PLAN"
-#     # elif any(k in message for k in question_keywords):
-#     #     return "WAIT_FOR_PLAN"
-#     else:
-#         return "NORMAL"
-# # def user_wants_new_city(message):
-# #     keywords = ["شهر دیگه", "عوض کن", "یه شهر دیگه", "مقصد دیگه"]
-# #     return any(k in message for k in keywords)
+
+city_list = ["تهران" , "مشهد" ,"یزد","شیراز","اصفهان","رشت"]
+
+generate_plan = {
+    "city":None,
+    "city_message":"لطفا شهر خود را انتخاب کنید",
+    "days_message":"لطفا تعداد روز ها را مشخص کنید",
+    "days":None,
+    "need_city_or_days":False
+}
 
 
 best_city = None
@@ -159,17 +156,7 @@ user_profile = {
     "description": None
 }
 
-conversation_state = {
-    "WAITING_CONFIRMATION": False,
-    "TRAVEL_MODEL": False,
-    "WAIT":False,
-    "CHOOSE_CITY":False,
-    "WAIT_FOR_PLAN":False,
-    "COLLECT_PROFILE":False,
-    "NORMAL":True,
-    "top_city":None
 
-}
 
 QUESTIONS = [
     {"key": "days", "type": "number", "min": 1, "max": 30},
@@ -179,18 +166,6 @@ QUESTIONS = [
     {"key": "interests", "type": "enum", "values": ["طبیعت", "تفریح", "خرید"]},
     {"key": "description", "type": "description"}
 ]
-
-# def next_travel_question():
-#     step = user_profile["step"]
-#     if step < len(QUESTIONS):
-#         q = QUESTIONS[step]
-#         if q["type"] == "number":
-#             return f"{q['key']}؟"
-#         elif q["type"] == "enum":
-#             return f"{q['key']}؟ ({', '.join(q['values'])})"
-#         else:
-#             return f"{q['key']}؟"
-#     return None
 
 def create_profile_v0(message):
     logger.info("start func create profile v0")
@@ -202,14 +177,6 @@ def create_profile_v0(message):
     user_profile = user_profile_or_question
     logger.info("finish question and now the profile is %s" , user_profile)
     return {"need_more_info": False, "profile": user_profile}
-
-
-# def rag_answer(user_message):
-#     result = test(user_message)
-#     if result["need_more_info"]:
-#         return result["message"]
-#     return True
-
 
 
 
@@ -226,56 +193,302 @@ def create_profile_v0(message):
 
 def rag_answer(user_message):
     stage = conversation_state.get("stage", "NORMAL")
-    logger.info("stage is %s", stage)
-
+    logger.info("Stage is %s" , stage)
     if stage == "WAITING_CONFIRMATION":
-        logger.info("Go to WAITING_CONFIRMATION")
+        logger.info("Go to WAITING_CONFIRMATION stage")
+        intent = handleIntent(user_message)
+        logger.info("intent is %s" , intent)
+        intent_data = handleIntent(user_message)
+        city_indent = intent_data.get("city")
+        intent = intent_data.get("intent")
+        days = intent_data.get("days")
+        goal = intent_data.get("goal")
+        if city_indent is not None:
+            conversation_state["current_city"] = city_indent
+        if intent == "weather":
+            city = city_indent or conversation_state.get("current_city")
+            city_fa = translate(city)[0]
+            if city is None:
+                return "برای کدوم شهر؟"
+
+            weather = get_weather_data(city_fa)
+            return weather_city_model(weather, city_fa)
+
+
+        if intent == "city_info":
+            city = city_indent or conversation_state.get("current_city")
+            city_name_en = translate(city)[1]
+            if city is None:
+                return "درباره کدوم شهر؟"
+
+            with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
+                doc = f.read()
+
+            return city_info_model(doc, city)
+        if intent == "direct_generate_plan" or intent == "generate_plan":
+
+            city = city_indent or conversation_state.get("current_city")
+            city_name_en = translate(city)[1]
+            if city is None:
+                return "برای کدوم شهر؟"
+
+            if days is None:
+                return "چند روز سفر؟"
+
+            with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
+                doc = f.read()
+
+            return direct_generate_plan(city, days, doc)
+        
+        if intent == "compare_city":
+            city1 = intent_data["city1"]
+            city2 = intent_data["city2"]
+            city1_name_en = translate(city1)[1]
+            city2_name_en = translate(city2)[1]
+            with open(f"../data/{city1_name_en}.md", "r", encoding="utf-8") as f1:
+                doc1 = f1.read()
+            with open(f"../data/{city2_name_en}.md", "r", encoding="utf-8") as f2:
+                doc2 = f2.read()
+            return compare_two_city_model(city1 , city2 , doc1 , doc2)
+        
         if user_want_plan(user_message):
             conversation_state["stage"] = "COLLECT_PROFILE"
-            logger.info("Go to COLLECT_PROFILE line 0")
             profile = create_profile_v0(user_message)
-            logger.info("profile is %s" , profile)
+            stage = conversation_state["stage"]
             if profile["need_more_info"]:
-                logger.info("profile message is %s" , profile["message"])
                 return profile["message"]
         else:
             logger.info("changed to normal after collect")
             conversation_state["stage"] = "NORMAL"
             return chat(user_message)
 
+
     if stage == "COLLECT_PROFILE":
-        logger.info("Go to COLLECT_PROFILE line 1")
+        logger.info("Go to stage COLLECT_PROFILE ")
         if user_message.strip() == "0":
             conversation_state["stage"] = "NORMAL"
             return chat("از حالت سوال اومدیم بیرون . یکم درباره سفر ها بگو کلا و سعی کن خیلییی کوتاه و خلاصه و حتما فارسی بگی")
-
         profile = create_profile_v0(user_message)
-        logger.info("in line 1 profile is %s" , profile)
         if profile["need_more_info"]:
             return profile["message"]
-        logger.info("changed state to choose city")
         conversation_state["profile"] = profile
-        conversation_state["stage"] = "CHOOSE_CITY"
-        print(conversation_state)
-        stage = conversation_state["stage"]
-    if stage == "CHOOSE_CITY":
-        logger.info("Go to CHOOSE_CITY")
         city = top_city(conversation_state["profile"])
-        print(f"city is {city}")
-        print(f"conversation_state is {conversation_state}")
+        logger.info("city top is %s" , city)
         conversation_state["top_city"] = city["top_city"]
-        conversation_state["stage"] = "NORMAL"
-        stage = conversation_state["stage"]
+        conversation_state["stage"] = "WAIT_FOR_PLAN"
         return ask_model(cities[city["top_city"]])
     
-    if stage =="WAIT_FOR_PLAN":
-        if user_want_plan(user_message):
-            print("start plan")
-            candidate = places(conversation_state["profile"] , conversation_state["top_city"])
-            print("candidate is" , candidate)
-            return plan_agent(conversation_state["top_city"] ,candidate,conversation_state["profile"]["profile"]["days"] )
+    intent_data = handleIntent(user_message)
+    logger.info("intent_data is %s", intent_data)
 
+    city_indent = intent_data.get("city")
+    intent = intent_data.get("intent")
+    days = intent_data.get("days")
+    goal = intent_data.get("goal")
+
+    # stage = conversation_state.get("stage", "NORMAL")
+
+    if city_indent is not None:
+        conversation_state["current_city"] = city_indent
+
+    logger.info("intent=%s stage=%s", intent, stage)
+    logger.info("city_indent=%s current_city=%s", city_indent, conversation_state["current_city"])
+
+
+    if intent == "cancel_workflow":
+        conversation_state["stage"] = "NORMAL"
+        return "باشه، از روند فعلی خارج شدیم."
+
+    if intent == "weather":
+        city = city_indent or conversation_state.get("current_city")
+        city_fa = translate(city)[0]
+        if city is None:
+            return "برای کدوم شهر؟"
+
+        weather = get_weather_data(city_fa)
+        return weather_city_model(weather, city_fa)
+
+
+    if intent == "city_info":
+        city = city_indent or conversation_state.get("current_city")
+        city_name_en = translate(city)[1]
+        if city is None:
+            return "درباره کدوم شهر؟"
+
+        with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
+            doc = f.read()
+
+        return city_info_model(doc, city)
+
+    if intent == "direct_generate_plan":
+
+        city = city_indent or conversation_state.get("current_city")
+        city_name_en = translate(city)[1]
+        if city is None:
+            return "برای کدوم شهر؟"
+
+        if days is None:
+            return "چند روز سفر؟"
+
+        with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
+            doc = f.read()
+
+        return direct_generate_plan(city, days, doc)
+    
+    if intent == "compare_city":
+        city1 = intent_data["city1"]
+        city2 = intent_data["city2"]
+        city1_name_en = translate(city1)[1]
+        city2_name_en = translate(city2)[1]
+        with open(f"../data/{city1_name_en}.md", "r", encoding="utf-8") as f1:
+            doc1 = f1.read()
+        with open(f"../data/{city2_name_en}.md", "r", encoding="utf-8") as f2:
+            doc2 = f2.read()
+        return compare_two_city_model(city1 , city2 , doc1 , doc2)
+
+
+
+
+
+    # if stage == "WAITING_CONFIRMATION":
+
+    #     if user_want_plan(user_message):
+    #         conversation_state["stage"] = "COLLECT_PROFILE"
+
+    #         profile = create_profile_v0(user_message)
+
+    #         if profile["need_more_info"]:
+    #             return profile["message"]
+
+    #         conversation_state["profile"] = profile
+    #         conversation_state["stage"] = "CHOOSE_CITY"
+
+    #         city_result = top_city(profile)
+    #         conversation_state["top_city"] = city_result["top_city"]
+    #         conversation_state["stage"] = "WAIT_FOR_PLAN"
+
+    #         return ask_model(cities[city_result["top_city"]])
+
+    #     else:
+    #         conversation_state["stage"] = "NORMAL"
+    #         return chat(user_message)
+
+    # if stage == "COLLECT_PROFILE":
+
+    #     if user_message.strip() == "0":
+    #         conversation_state["stage"] = "NORMAL"
+    #         return chat("باشه، خارج شدیم.")
+
+    #     profile = create_profile_v0(user_message)
+
+    #     if profile["need_more_info"]:
+    #         return profile["message"]
+
+    #     conversation_state["profile"] = profile
+
+    #     city_result = top_city(profile)
+    #     conversation_state["top_city"] = city_result["top_city"]
+
+    #     conversation_state["stage"] = "WAIT_FOR_PLAN"
+
+    #     return ask_model(cities[city_result["top_city"]])
+    if stage == "WAIT_FOR_PLAN":
+        logger.info("go to stage WAIT_FOR_PLAN")
+
+        if user_want_plan(user_message):
+            candidate = places(
+                conversation_state["profile"],
+                conversation_state["top_city"]
+            )
+            stage = conversation_state["NORMAL"]
+            return plan_agent(
+                conversation_state["top_city"],
+                candidate,
+                conversation_state["profile"]["profile"]["days"]
+            )
+        if generate_plan["city"] is None:
+
+            if user_message not in city_list:
+                return "لطفا یکی از شهرهای پشتیبانی شده را وارد کنید"
+
+            generate_plan["city"] = user_message
+
+            if generate_plan["days"] is None:
+                return "چند روز سفر مدنظرته؟"
+
+            if generate_plan["days"] is None:
+
+                if not user_message.strip().isdigit():
+                    return "لطفا تعداد روز را به صورت عدد وارد کن"
+
+                generate_plan["days"] = int(user_message)
+
+            city = generate_plan["city"]
+            days = generate_plan["days"]
+
+            city_name_en = translate(city)[1]
+
+            with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
+                doc = f.read()
+
+            conversation_state["stage"] = "NORMAL"
+
+            generate_plan["city"] = None
+            generate_plan["days"] = None
+
+            return direct_generate_plan(city, days, doc)
+            
+
+        if intent == "weather":
+            city = intent_data.get("city") or conversation_state.get("current_city")
+            if city:
+                weather = get_weather_data(cities[city_indent])
+                return weather_city_model(weather, cities[city])
+
+        if intent == "city_info":
+            city = intent_data.get("city") or conversation_state.get("current_city")
+            with open(f"../data/{city}.md", "r", encoding="utf-8") as f:
+                doc = f.read()
+            return city_info_model(doc, city)
+        conversation_state["stage"] = "NORMAL"
+        return "اوکی 👍 اگر آماده بودی بگو 'برنامه' تا ادامه بدیم"
+
+
+
+    if intent == "start_travel":
+        conversation_state["stage"] = "WAITING_CONFIRMATION"
+        return "باشه 🙂 چند سوال می‌پرسم تا برنامه سفر بچینم."
+    
+    if intent == "generate_plan":
+        city = city_indent or conversation_state.get("current_city")
+        generate_plan["city"] = city
+        generate_plan["days"] = days
+
+        if city and days:
+            city_name_en = translate(city)[1]
+            with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
+                doc = f.read()
+            return direct_generate_plan(city, days, doc)
+        conversation_state["stage"] = "WAIT_FOR_PLAN"
+        if not city:
+            return "برای کدوم شهر برنامه میخوای؟"
+
+        return "چند روز سفر مدنظرته؟"
+        
+        
+        
+    # if intent == "generate_plan":
+    #     conversation_state["stage"] = "WAITING_CONFIRMATION"
+    #     return "میخوای چند سوال بپرسم تا برنامه دقیق‌تر بشه؟"
+
+    if intent == "modify_plan":
+        return modify_plan_model(
+            conversation_state.get("profile"),
+            goal,
+            conversation_state.get("top_city")
+        )
     reply = chat(user_message)
+
     if reply.strip() == "میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدم؟":
         conversation_state["stage"] = "WAITING_CONFIRMATION"
 
@@ -283,61 +496,99 @@ def rag_answer(user_message):
 
 
 
-
-
 # def rag_answer(user_message):
-    # global conversation_state, best_city, history
+#     intent_data = handleIntent(user_message)
+#     logger.info("intent_data is %s" , intent_data)
+#     city_indent = intent_data["city"]
+#     if city_indent is not None:
+#         conversation_state["current_city"] = city_indent
+#     logger.info("current city is %s" , conversation_state["current_city"])
+#     intent = intent_data["intent"]
+#     logger.info("intent is %s" , intent)
+#     stage = conversation_state.get("stage", "NORMAL")
+#     logger.info("stage is %s", stage)
 
-    # phase = conversation_state["phase"]
-    # print("state is", phase)
+#     if intent == "weather":
+#         if city_indent is not None:
+#             weather = get_weather_data(cities[city_indent])
+#             return weather_city_model(weather ,cities[city_indent] )
+#         else:
+#             return "چه شهری مدنظر دارین؟"
 
-    # if phase == "INIT":
-    #     result = top_city(user_message)
 
-    #     if result["need_more_info"]:
-    #         return result["message"]
+#     if intent == "city_info":
+#         city = city_indent or conversation_state.get("current_city")
 
-    #     best_city = result["top_city"]
-    #     conversation_state["best_city"] = best_city
-    #     conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
+#         if city is None:
+#             return "درباره کدوم شهر منظورتونه؟"
 
-    #     return ask_model(best_city)
+#         with open(f"../data/{city}.md", "r", encoding="utf-8") as f:
+#             file = f.read()
+#         return city_info_model(file , city)
 
-    # if phase == "WAITING_FOR_PLAN_CONFIRM":
-    #     if user_want_plan(user_message):
-    #         conversation_state["phase"] = "PLANNING"
-    #         return continue_chat(best_city, "برنامه سفر لطفاً")
-    #     else:
-    #         conversation_state["phase"] = "FALL_BACK"
-    #         return ask_model_fallback(user_message)
+#     if intent == "start_travel":
+#         conversation_state["stage"] = "WAITING_CONFIRMATION"
 
-    # if phase == "FALL_BACK":
+#     if intent == "generate_plan":
+#         conversation_state["stage"] = "WAITING_CONFIRMATION"
 
-    #     if user_want_plan(user_message):
-    #         conversation_state["phase"] = "PLANNING"
-    #         return continue_chat(best_city, "برنامه سفر لطفاً")
+#     if intent == "modify_plan":
+#         goal = intent_data["goal"]
+#         return modify_plan_model(user_profile , goal , conversation_state["top_city"])
+    
+#     if intent == "direct_generate_plan":
+#         city = intent_data["city"]
+#         days = intent_data["days"]
+#         with open(f"../data/{city}.md", "r", encoding="utf-8") as f:
+#             file = f.read()
+        
 
-    #     if user_wants_new_city(user_message):
-    #         conversation_state["phase"] = "INIT"
-    #         conversation_state["best_city"] = None
-    #         return "باشه  بگو چه سفری مدنظرت هست تا یه شهر جدید پیشنهاد بدم."
 
-    #     if is_travel_related(user_message):
-    #         conversation_state["phase"] = "WAITING_FOR_PLAN_CONFIRM"
-    #         return ask_model_fallback(user_message)
+#     if stage == "WAITING_CONFIRMATION":
+#         intent = handleIntent(user_message)
+#         if user_want_plan(user_message):
+#             conversation_state["stage"] = "COLLECT_PROFILE"
+#             profile = create_profile_v0(user_message)
+#             stage = conversation_state["stage"]
+#             if profile["need_more_info"]:
+#                 return profile["message"]
+#         else:
+#             logger.info("changed to normal after collect")
+#             conversation_state["stage"] = "NORMAL"
+#             return chat(user_message)
 
-    #     return (
-    #         "من فقط دستیار سفر هستم 🌍\n"
-    #         "اگر درباره مقصد یا برنامه سفر سوالی دارید خوشحال میشم کمک کنم."
-    #     )
+#     if stage == "COLLECT_PROFILE":
+#         intent = handleIntent(user_message)
+#         if user_message.strip() == "0":
+#             conversation_state["stage"] = "NORMAL"
+#             return chat("از حالت سوال اومدیم بیرون . یکم درباره سفر ها بگو کلا و سعی کن خیلییی کوتاه و خلاصه و حتما فارسی بگی")
 
-    # # -------- PLANNING --------
-    # if phase == "PLANNING":
+#         profile = create_profile_v0(user_message)
+#         if profile["need_more_info"]:
+#             return profile["message"]
+#         conversation_state["profile"] = profile
+#         conversation_state["stage"] = "CHOOSE_CITY"
+#         stage = conversation_state["stage"]
+#     if stage == "CHOOSE_CITY":
+#         intent = handleIntent(user_message)
+#         city = top_city(conversation_state["profile"])
+#         conversation_state["top_city"] = city["top_city"]
+#         stage = conversation_state["stage"]
+#         return ask_model(cities[city["top_city"]])
+    
+#     if stage =="WAIT_FOR_PLAN":
+#         intent = handleIntent(user_message)
+#         if user_want_plan(user_message):
+#             candidate = places(conversation_state["profile"] , conversation_state["top_city"])
+#             return plan_agent(conversation_state["top_city"] ,candidate,conversation_state["profile"]["profile"]["days"] )
+#         else:
+#             conversation_state["stage"] = "NORMAL"
 
-    #     if user_wants_new_city(user_message):
-    #         conversation_state["phase"] = "INIT"
-    #         conversation_state["best_city"] = None
-    #         return "باشه  بگو چه سفری مدنظرت هست تا از اول بررسی کنیم."
+#     reply = chat(user_message)
+#     if reply.strip() == "میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدم؟":
+#         conversation_state["stage"] = "WAITING_CONFIRMATION"
 
-    #     return continue_chat(best_city, user_message)
+#     return reply
+
+
 

@@ -2,7 +2,7 @@ from llm.config import URL , MODEL_NAME_META_70 , OPENROUTER_API_KEY , MODEL_NAM
 import requests
 import json
 from llm.log import logger
-api = "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"
+api = "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"
 test_url = "https://openrouter.ai/api/v1"
 
 def get_weight_for_feature(user_profile: str):

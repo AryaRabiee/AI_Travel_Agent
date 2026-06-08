@@ -1,7 +1,7 @@
 from .state_user import user_profile
 from .travel_question_step import next_travel_question
 from .save_answer import save_answer_to_profile
-from .travel_related import is_travel_related
+# from .travel_related import is_travel_related
 import json
 from .validation import validation_answer
 from llm.model_manager import fall_back

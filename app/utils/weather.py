@@ -1,4 +1,5 @@
 import requests
+from llm.log import logger
 
 TOKEN = "615965:683b4619809f4"
 
@@ -11,4 +12,4 @@ def get_weather_data(city):
         return data['result']['weather'][0]['description']
     
     except Exception as e:
-        print("Error:", e)
+        logger.error("ERROR %s" , e)
