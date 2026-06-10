@@ -181,3 +181,4 @@ cython_debug/
 .cursorindexingignore
 app/test.py
 app/test1.py
+app/llm/config.py

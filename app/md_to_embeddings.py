@@ -2,13 +2,9 @@ import requests
 import json
 import os
 
-# API_KEY = "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"
-API_KEY = "jina_7fedde13af3440c88d1cad18c001c003y14JgGjTbn-LcR3M2h2rOcLT82sI"
 
-url_jina = "https://api.jina.ai/v1/embeddings"
-url_open = "https://openrouter.ai/api/v1/embeddings"
-api = "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"
-
+api_get_embedding = os.getenv("EMBEDDING_API")
+url_embedding = os.getenv("EMBEDDING_URL")
 cities_data = []  
 
 DATA_DIR = "data"
@@ -27,8 +23,8 @@ for filename in os.listdir(DATA_DIR):
             "input": [text]
         }
 
-        response = requests.post(url_open, headers={
-            "Authorization": f"Bearer {api}",
+        response = requests.post(url_embedding, headers={
+            "Authorization": f"Bearer {api_get_embedding}",
             "Content-Type": "application/json"
         }, data=json.dumps(data))
 

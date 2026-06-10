@@ -41,6 +41,9 @@ intrest_dict = {
     "شهری":"recreational",
     "زیارت":"religious"
 }
+
+city_list = ["تهران" , "مشهد" ,"یزد","شیراز","اصفهان","رشت"]
+
 import re
 
 def translate(city):

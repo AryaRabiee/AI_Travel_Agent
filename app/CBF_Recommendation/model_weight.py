@@ -1,10 +1,11 @@
-from llm.config import URL , MODEL_NAME_META_70 , OPENROUTER_API_KEY , MODEL_NAME_OPENAI
 import requests
 import json
 from llm.log import logger
-api = "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"
-test_url = "https://openrouter.ai/api/v1"
+import os
 
+model_name = os.getenv("MODEL_NAME")
+URL = os.getenv("URL")
+api_for_weight = os.getenv("EMBEDDING_API")
 def get_weight_for_feature(user_profile: str):
     profile_text = f"""
         days: {user_profile["profile"]['days']}
@@ -17,7 +18,7 @@ def get_weight_for_feature(user_profile: str):
     url = URL
 
     headers = {
-        "Authorization": f"Bearer {api}",
+        "Authorization": f"Bearer {api_for_weight}",
         "Content-Type": "application/json"
     }
 
@@ -36,7 +37,7 @@ def get_weight_for_feature(user_profile: str):
     ]
 
     payload = {
-        "model": MODEL_NAME_OPENAI,
+        "model": model_name,
         "messages": messages
     }
 

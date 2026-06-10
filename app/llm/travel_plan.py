@@ -1,4 +1,3 @@
-from .config import MODEL_NAME_META_70 , OPENROUTER_API_KEY , URL
 import json
 import requests
 from state.memory import history , CITY_SIGNATURE , intrest_dict

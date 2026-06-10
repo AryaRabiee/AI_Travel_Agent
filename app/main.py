@@ -5,9 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_swagger import patch_fastapi
+from dotenv import load_dotenv
 
-app = FastAPI(title="AI Travel Assistant")
-# patch_fastapi(app)
+load_dotenv()
+
+app = FastAPI(title="AI Travel Assistant" , summary="This is a AI_travel asisstant", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -15,9 +17,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# @app.get("/")
-# def read_root():
-#     return {"message": "سلام! من دستیار سفر شما هستم. پیام خود را به /chat بفرستید."}
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")

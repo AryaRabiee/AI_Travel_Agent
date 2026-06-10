@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 from rag.vector_search import llm_select_best_city
 from rag.retrieval import retrieve_top_cities
-from state.handle_user import handle_user_message
 from llm.log import logger
 ALPHA = 0.6
 BETA = 0.4

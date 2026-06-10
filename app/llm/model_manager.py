@@ -1,43 +1,18 @@
 from litellm import completion
 import json
-from .config import MODEL_NAME_HERMAS , MODEL_NAME_META_70 , OPENROUTER_API_KEY
 from state.memory import history
-from state.memory import conversation_state_memory
 from openai import OpenAI
+import os
 
-api_arvan = "e227****-****-****-****-********f9dd"
-seced_acc_route_api = "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"
-api = "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"
-# from llm.continue_chat import get_city_plan
-def get_city_plan(best_city):
-    with open("llm/cities_embeddings_new.json" , "r" , encoding="utf-8") as f:
-        plans = json.load(f)
+api_key = os.getenv("SECEND_ACC_ROUTE_API_KEY")
 
-        for plan in plans:
-            if plan["city"] == best_city:
-                return plan["text"]
-
-    return None 
-MODELS = {
-    "intent_primary":MODEL_NAME_META_70,
-    "intent_backup":MODEL_NAME_HERMAS,
-    "is_related":MODEL_NAME_META_70,
-    "ask_model":MODEL_NAME_META_70,
-    "free_chat":MODEL_NAME_HERMAS,
-    "City":MODEL_NAME_META_70,
-    "plan":MODEL_NAME_HERMAS
-}
-
-def call_llm(primary_model, backup_model, messages):
-    resp = completion(model=primary_model ,api_key=api, messages = messages)
-    return resp["choices"][0]["message"]["content"]
 
 def call_llm_with_fallback(primary_model, backup_model, messages):
     resp = completion(
         model=primary_model,
         fallbacks=backup_model,
         
-        api_key=seced_acc_route_api,
+        api_key=api_key,
         messages=messages,
         num_retries = 2
     )
@@ -49,262 +24,159 @@ def detect_intent(user_message ,recent_history, current_city ):
 
     messages = [
                 {"role": "system", "content": f"""
-                    You are a routing and intent classification agent for a travel assistant.
+                   You are an intent classification and entity extraction agent for a travel assistant.
 
-                    Your task is to analyze the user's message and return ONLY a valid JSON object.
+                Analyze the user's message and return ONLY a valid JSON object.
 
-                    Do not answer the user's question.
-                    Do not explain your reasoning.
-                    Do not write markdown.
-                    Do not write any text outside the JSON.
+                Rules:
 
-                    Available intents:
+                * Return JSON only.
+                * No explanations.
+                * No markdown.
+                * No extra text.
+                * Choose exactly one intent.
+                * Never invent cities or days.
+                * Extract city names whenever they appear.
+                * If a value is unavailable, return null.
 
-                    general_chat
-                    Casual conversation, greetings, opinions, small talk.
-                    start_travel
-                    User wants travel recommendations or help choosing a destination.
-                    city_info
-                    User asks about a city, attractions, culture, transportation, tourism, hotels, restaurants, or travel information related to a specific city.
-                    weather
-                    User asks about weather, temperature, climate, rain, forecast, or seasonal conditions.
-                    generate_plan
-                    User wants a travel itinerary or travel plan.
-                    modify_plan
-                    User wants to change an existing travel plan.
-                    cancel_workflow
-                    User wants to stop the current travel-planning process.
-                    unknown
-                    None of the above.
-                    compare_city
-                    If user wants to compa between two city
+                Available intents:
 
-                    Extract the following entities when available:
+                * general_chat
+                * start_travel
+                * city_info
+                * weather
+                * generate_plan
+                * modify_plan
+                * compare_city
+                * cancel_workflow
+                * unknown
 
-                    city
-                    days
-                    goal is optional.
+                Intent definitions:
 
-                    If no modification request exists,
-                    return goal as null.
-                    Rules:
-                    Always extract city names whenever they appear in the user's message,
-                    regardless of the detected intent.
-                    Return ONLY JSON.
-                    If a city is not mentioned, set city to null.
-                    If days are not mentioned, set days to null.
-                    Never invent a city.
-                    Never invent a number of days.
-                    Always choose exactly one intent.
+                general_chat:
+                Greetings, casual conversation, opinions, small talk.
 
-                    Output format:
+                start_travel:
+                User wants help choosing a destination or asks for travel recommendations.
 
-                    {{
-                    "intent": "",
-                    "city": "<city_or_null>",
-                    "days": <number_or_null>,
-                    "goal":<expensive_or_cheaper_or_null>
-                    }}
+                city_info:
+                User asks about attractions, tourism, transportation, hotels, restaurants, culture, or general information about a city.
 
-                    Examples:
+                weather:
+                User asks about weather, temperature, climate, forecast, rain, or seasons.
 
-                    User:
-                    سلام خوبی؟
+                generate_plan:
+                User wants a travel itinerary or travel plan.
 
-                    Output:
-                    {{
-                    "intent": "general_chat",
-                    "city": null,
-                    "days": null,
-                    "goal":"null"
-                    }}
+                modify_plan:
+                User wants to modify an existing travel plan.
 
-                    User:
-                    میخوام سفر برم
+                compare_city:
+                User compares two cities or asks which city is better.
 
-                    Output:
-                    {{
-                    "intent": "start_travel",
-                    "city": null,
-                    "days": null,
-                    "goal":"null"
-                    }}
+                cancel_workflow:
+                User wants to stop the current planning process.
 
-                    User:
-                    رشت چه جاهای دیدنی داره؟
+                Output schema:
 
-                    Output:
-                    {{
-                    "intent": "city_info",
-                    "city": "Rasht",
-                    "days": null,
-                    "goal":"null"
-                    }}
+                For normal intents:
 
-                    User:
-                    آب و هوای یزد چطوره؟
+                {{
+                "intent": "<intent>",
+                "city": "<city_or_null>",
+                "days": <number_or_null>,
+                "goal": "<expensive|cheaper|null>"
+                }}
 
-                    Output:
-                    {{
-                    "intent": "weather",
-                    "city": "یزد",
-                    "days": null,
-                    "goal":"null"
-                    }}
+                For compare_city:
 
-                    User:
-                    برام یه برنامه سفر ۵ روزه برای شیراز درست کن
+                {{
+                "intent": "compare_city",
+                "city1": "<city1>",
+                "city2": "<city2>",
+                "days": null,
+                "goal": null
+                }}
 
-                    Output:
-                    {{
-                    "intent": "generate_plan",
-                    "city": "Shiraz",
-                    "days": 5,
-                    "goal":"null"
-                    }}
-                    if user wants a expensice or cheaper plan add goal to our json for exmaple:
-                    User:
-                    این برنامه رو ارزون‌تر کن
+                Context:
 
-                    Output:
-                   {{
-                    "intent": "modify_plan",
-                    "city": null,
-                    "days": null,
-                    "goal":"cheaper"
-                    }}
+                current_city = {current_city}
 
-                    User:
-                    بیخیال
+                City reference rules:
 
-                    Output:
-                    {{
-                    "intent": "cancel_workflow",
-                    "city": null,
-                    "days": null,
-                    "goal":"null"
-                    }}
-                 If the current message is a follow-up to the previous topic,
-                    keep the same topic and infer the intent.
-                 Previous conversation:
+                If the user refers to a city indirectly using phrases such as:
 
-                    User: هوای رشت چطوره؟
-                    Assistant: بارش خفیف باران
+                * این شهر
+                * اون شهر
+                * اینجا
+                * آنجا
+                * درباره اش
+                * جاهای دیدنیش
+                * آب و هواش
+                * هتل هاش
+                * رستوران هاش
 
-                    Current user message:
-                    شیراز چطور؟
-                    Output:
-                    {{
-                    "intent": "weather",
-                    "city": "shiraz",
-                    "days": null,
-                    "goal":"null"
-                    }}
-                 Current conversation context:
+                and no explicit city is mentioned, use current_city.
 
-                    current_city: {current_city}
+                If a new city is explicitly mentioned, use the new city.
 
-                    Rules about current_city:
+                If neither exists, return city=null.
 
-                    1. If the user refers to:
-                    - این شهر
-                    - اون شهر
-                    - اینجا
-                    - آنجا
-                    - شهر مورد نظر
-                    - درباره اش
-                    - درباره این شهر
-                    - جاهای دیدنیش
-                    - آب و هواش
-                    - هتل هاش
-                    - رستوران هاش
+                Conversation rules:
 
-                    and no city name is explicitly mentioned,
+                Use recent_history to resolve follow-up questions.
 
-                    use current_city as the city value.
+                Example:
 
-                    2. If a new city is explicitly mentioned by the user,
-                    replace current_city with the new city.
+                History:
+                User: هوای رشت چطوره؟
 
-                    3. If neither a city name nor a city reference exists,
-                    return city as null.
+                Current:
+                شیراز چطور؟
 
-                    Examples:
+                Output:
 
-                    Current city:
-                    Rasht
+                {{
+                "intent": "weather",
+                "city": "Shiraz",
+                "days": null,
+                "goal": null
+                }}
 
-                    User:
-                    درباره این شهر بیشتر بگو
+                Compare examples:
 
-                    Output:
-                    {{
-                    "intent": "city_info",
-                    "city": "Rasht",
-                    "days": null,
-                    "goal": null
-                    }}
+                User:
+                تهران بهتره یا شیراز؟
 
-                    Current city:
-                    Rasht
+                Output:
 
-                    User:
-                    جاهای دیدنیش چیه؟
+                {{
+                "intent": "compare_city",
+                "city1": "Tehran",
+                "city2": "Shiraz",
+                "days": null,
+                "goal": null
+                }}
 
-                    Output:
-                    {{
-                    "intent": "city_info",
-                    "city": "Rasht",
-                    "days": null,
-                    "goal": null
-                    }}
+                User:
+                بین تهران و شیراز کدوم رو برای سفر انتخاب کنم؟
 
-                    Current city:
-                    Rasht
+                Output:
 
-                    User:
-                    آب و هواش چطوره؟
+                {{
+                "intent": "compare_city",
+                "city1": "Tehran",
+                "city2": "Shiraz",
+                "days": null,
+                "goal": null
+                }}
 
-                    Output:
-                    {{
-                    "intent": "weather",
-                    "city": "Rasht",
-                    "days": null,
-                    "goal": null
-                    }}
+                User message:
+                {user_message}
 
-                    Current city:
-                    Rasht
-
-                    User:
-                    شیراز چطور؟
-
-                    Output:
-                    {{
-                    "intent": "weather",
-                    "city": "Shiraz",
-                    "days": null,
-                    "goal": null
-                    }}
-
-                    User:
-                    میخوام شهر شیراز رو با تهران مقایسه کنی برام.or
-                    نمیدونم بین شهر تهران یا شیراز کدوم رو برم؟
-
-                    Output:
-                    {{
-                    "intent": "compare_city",
-                    "city1": "tehran",
-                    "city2": "shiraz",
-                    "days": null,
-                    "goal": null
-                    }}                   
-
-                    User message:
-
-                    {user_message}
-                Recent_history:
+                Recent history:
                 {recent_history}
+
 
         """},
         {"role": "user", "content": f"what do you think about this user's message? {user_message} and this history messages {recent_history}"},
@@ -612,22 +484,6 @@ def detect_intent_with_openai(user_message ,recent_history, current_city):
     return json.loads(res)
 
 
-
-
-# def intent_agent(user_message):
-#     messages = [
-#                 {"role": "system", "content": """
-#         You are a travel assistant classifier.
-#         Classify the user's message into one of three categories:
-#         - 'Yes' if the message is about travel.
-#         - 'SMALLTALK' if the message is just greetings or casual conversation (hello, how are you, etc.).
-#         - 'No' if the message is not related to travel.
-
-#         Reply with ONLY one of these three keywords: Yes, SMALLTALK, No.
-#         """},
-#         {"role": "user", "content": f"what do you think about this user's message? {user_message}"},
-#     ]
-#     return call_llm_with_fallback("openrouter/meta-llama/llama-3.3-70b-instruct:free", ["openrouter/nousresearch/hermes-3-llama-3.1-405b:free"], messages).strip().lower()
 
 def city_agent(user_profile , candidates):
 
@@ -1000,7 +856,7 @@ No extra messages or explanations should be included. After asking, **pause comp
 
 
 
-def weather_city_model(weather , city):
+def weather_city_model(weather , city , user_message):
     messages = [
         {
             "role":"system",
@@ -1008,16 +864,21 @@ def weather_city_model(weather , city):
                 You are a travel weather assistant.
 
                 You receive:
+                - User question
                 - City name
-                - Current weather description
+                - Weather description
 
                 Your job:
-                1. Explain the weather in Persian.
-                2. Tell the user whether the weather is suitable for travel.
-                3. Mention useful travel advice if necessary.
-                4. Keep the answer short (maximum 5 sentences).
-                5. Do not invent weather information.
-                6. Use only the provided weather description.
+                1. Answer the user's weather question first.
+                2. Use ONLY the provided weather information.
+                3. If the information is insufficient, say so.
+                4. Briefly explain the weather in Persian.
+                5. Tell whether the weather is suitable for travel.
+                6. Keep the answer short (maximum 5 sentences).
+                7. Do not invent weather information.
+
+                User question:
+                {user_message}
 
                 City:
                 {city}
@@ -1056,7 +917,6 @@ def weather_city_model(weather , city):
    
 
 def city_info_model(text , city):
-    global history
     messages = [
         {
             "role":"system",
@@ -1087,7 +947,6 @@ def city_info_model(text , city):
 """
         }
     ]
-    messages += history[-2:]
     res =  call_llm_with_fallback("openrouter/google/gemma-4-31b-it:free",
             [
                           "openrouter/openai/gpt-oss-20b:free",
@@ -1097,7 +956,6 @@ def city_info_model(text , city):
                           "openrouter/poolside/laguna-m.1:free"      
             ],
                 messages).strip().lower()
-    history.append({"role": "assistant", "content": res})
     return res
 
 

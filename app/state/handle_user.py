@@ -1,10 +1,7 @@
 from .state_user import user_profile
 from .travel_question_step import next_travel_question
-from .save_answer import save_answer_to_profile
-# from .travel_related import is_travel_related
-import json
 from .validation import validation_answer
-from llm.model_manager import fall_back
+from llm.log import logger
 
 
 
@@ -20,6 +17,18 @@ QUESTIONS = [
 
 ]
 
+
+
+def create_profile(message):
+    logger.info("start func create profile v0")
+    user_profile_or_question = handle_user_message(message)
+    if not isinstance(user_profile_or_question , dict):
+        logger.info("user profile %s" , user_profile_or_question)
+        logger.info("User profile incomplete, asking for more info...")
+        return {"need_more_info": True, "message": user_profile_or_question}
+    user_profile = user_profile_or_question
+    logger.info("finish question and now the profile is %s" , user_profile)
+    return {"need_more_info": False, "profile": user_profile}
 
 
 

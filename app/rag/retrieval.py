@@ -1,5 +1,5 @@
 import json
-from .embedding import get_embeding
+from .embedding import get_embedding
 from .embedding import cosine_similarity
 from state.handle_user import handle_user_message
 import faiss
@@ -23,24 +23,13 @@ def retrieve_top_cities(user_profile):
         f"Budget: {user_profile.get('budget')}\n"
         f"Description: {user_profile.get('description')}"
     )
-    query_emb = get_embeding(profile_text)
+    query_emb = get_embedding(profile_text)
     query_emb = np.array([query_emb] , dtype="float32")
     faiss.normalize_L2(query_emb)
     index = faiss.read_index("rag/cities_flat_open.index")
     k = 5
     D , I = index.search(query_emb , k)
 
-    # db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
-
-    # scored = []
-
-    # for city in db:
-    #     score = cosine_similarity(query_emb, city["embedding"])
-    #     scored.append((city["city"], score, city["text"]))
-
-    # # sort top-k
-    # scored.sort(key=lambda x: x[1], reverse=True)
-    # return scored[:TOP_K]
     db = json.load(open(DATA_PATH, "r", encoding="utf-8"))
 
     top_cities = []
