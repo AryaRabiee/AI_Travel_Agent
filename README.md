@@ -1,117 +1,256 @@
-# 🧳 AI Travel Assistant (RAG-based)
+# 🧳 AI Travel Assistant
 
-An AI-powered travel assistant that helps users discover cities, generate personalized travel plans, and get real-time travel information through a conversational interface.
+AI Travel Assistant is an LLM-powered travel planning system that helps users discover destinations, compare cities, retrieve travel information, check weather conditions, and generate personalized travel itineraries through a conversational interface.
 
-This project uses **LLMs, RAG architecture, vector search, and stateful conversation management** to simulate an intelligent travel planning experience.
+Unlike a traditional chatbot, this project combines:
 
----
+* Intent Classification
+* Stateful Conversation Management
+* Retrieval-Augmented Generation (RAG)
+* Vector Search
+* Multi-model LLM Fallback
+* Personalized Travel Recommendation
 
-## 🚀 Features
+to create a more reliable and context-aware travel assistant.
 
-### 🧠 Intelligent Conversation System
-- Multi-turn dialogue with state management
-- Handles travel workflows step-by-step
-- Dynamic context switching (weather, planning, city info, comparison)
-
-### 🗺️ Travel Planning
-- Personalized travel itinerary generation
-- Profile-based recommendation system
-- Multi-day travel planning support
-
-### 🌦️ Weather Assistant
-- Real-time weather queries per city
-- Travel suitability analysis
-- Offline fallback responses for reliability
-
-### 🏙️ City Intelligence (RAG System)
-- City knowledge retrieval system
-- Uses json-based city documents
-- Context-aware city Q&A
-
-### ⚖️ City Comparison
-- Compare two cities based on user intent
-- Travel decision assistance
-
-### 🔍 Intent Classification System
-- LLM-based routing system
-- Extracts:
-  - intent
-  - city
-  - number of days
-  - travel goals
-- Supports multi-turn conversation awareness
-
-### 🧩 Robust Architecture
-- Multi-model fallback (OpenRouter-based)
-- State machine for conversation flow
-- Error-handling and safe responses
+The goal of this project is to explore real-world AI Engineering concepts such as routing, RAG pipelines, conversation state management, retrieval systems, prompt engineering, and production-oriented LLM application design.
 
 ---
 
-## 🏗️ System Architecture
+# 🚀 Features
+
+## Intelligent Conversation System
+
+* Multi-turn dialogue support
+* Conversation state management
+* Context-aware responses
+* Workflow handling for travel planning
+
+## Travel Recommendation Engine
+
+* User profile generation
+* Personalized destination recommendation
+* Travel preference analysis
+
+## Travel Plan Generation
+
+* Multi-day itinerary generation
+* Personalized planning based on user profile
+
+## City Information Retrieval (RAG)
+
+* Retrieval-based city knowledge system
+* Context-aware city question answering
+* Grounded responses using local knowledge base
+
+## Weather Assistant
+
+* Real-time weather retrieval
+* Travel suitability analysis
+* Offline fallback support
+
+## City Comparison
+
+* Compare multiple destinations
+* Travel decision assistance
+
+## Reliability Features
+
+* Multi-model fallback strategy
+* Basic error handling
+* Offline weather fallback
+* State recovery mechanisms
+
+---
+
+# 🏗️ System Architecture
+
+```text
 User Message
-↓
-Intent Classifier (LLM)
-↓
-State Manager (Conversation State)
-↓
-Router (Weather / Plan / City Info / Compare)
-↓
-RAG Layer (City Docs + Vector Search) or API for weather
-↓
-LLM Response Generator
+      │
+      ▼
+Intent Classifier
+      │
+      ▼
+Conversation State Manager
+      │
+      ▼
+Router
+ ┌────┼────┬─────┬─────┐
+ ▼    ▼    ▼     ▼     ▼
+Weather City Plan Compare NormalChat
+   │     │    │      │      │
+   │     │    │      │      └──────────┐
+   │     │    │      │                 │
+   └─────┴────┴──────┘                 │
+            │                          │
+            ▼                          ▼
+      RAG / APIs              LLM Response Generator
+            │                          ▲
+            └──────────────────────────┘
+```
+
+---
+
+# 📂 Project Structure
+
+```text
+AI_Travel_Agent/
+├── app/
+│   ├── main.py
+│   │
+│   ├── md_to_embeddings.py
+|   | 
+│   ├── llm/
+│   │   ├── client.py
+│   │   ├── model_manager.py
+│   │   ├── travel_plan.py
+│   │   └── log.py
+│   │
+│   ├── rag/
+│   │   ├── retrieval.py
+│   │   ├── vector_search.py
+│   │   └── embeddings.py
+│   │   
+│   │
+│   ├── router/
+│   │   ├── intent.py
+│   │   └── weather_intent.py
+│   │   
+│   │   
+│   │
+│   ├── state/
+│   │   ├── handel_user.py
+│   │   ├── memory.py
+│   │   ├── save_answer.py
+│   │   ├── state_user.py
+│   │   ├── travel_question_step.py
+│   │   └── validation.py
+│   │
+│   ├── CBF_Recommendation/
+│   │   ├── city_matrix.py
+│   │   ├── model_weight.py
+│   │   └── recommandation_score.py
+│   
+│
+├── data/
+├── requirements.txt
+└── README.md
+```
+
+## Important Files
+
+### main.py
+
+Application entry point and FastAPI server.
+
+### intent.py
+
+Intent classification and entity extraction.
+
+
+### weather_intent.py
+
+Weather retrieval and weather-response generation.
+
+### data/
+
+Local city knowledge base used by the RAG system.
+
 
 
 ---
 
-## 🧠 Tech Stack
+# 🧠 Tech Stack
 
-- Python 🐍
-- FastAPI ⚡
-- LLMs (OpenRouter API)
-- RAG (Retrieval-Augmented Generation)
-- Vector Database (Embeddings-based search)
-- API for weather
+* Python
+* FastAPI
+* OpenRouter API
+* RAG
+* Vector Database(faiss)
+* Embeddings
+* Docker
 
 ---
 
-## 📦 Installation
+# ⚙️ Installation
 
-### 1. Clone repository
 ```bash
 git clone https://github.com/AryaRabiee/AI_Travel_Agent.git
-cd app
+
+cd AI_Travel_Agent
+
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+
+# Linux / Mac
+source venv/bin/activate
+
+# Windows
+venv\Scripts\activate
+
 pip install -r requirements.txt
-Create .env file:
+```
+
+Create `.env`
+
+```env
 OPENROUTER_API_KEY=your_api_key
 WEATHER_API_KEY=your_api_key
+```
+
+Run:
+
+```bash
 fastapi dev main.py
 ```
-### 🐳 Docker Setup
+
+---
+
+# 🐳 Docker
+
+Build image:
+
+```bash
 docker build -t travel-assistant .
+```
+
+Run container:
+
+```bash
 docker run -p 8000:8000 --env-file .env travel-assistant
----
-
-### ⚠️Limitations (v1.0)
-Supports limited number of cities (6 cities)
-Weather depends on external API
-Intent classification may fail in ambiguous cases (~80–85% accuracy)
-No flight/hotel booking integration yet
-No real-time pricing system
+```
 
 ---
-### 🧪 Future Improvements
-Integration with flight & hotel APIs
-Better intent model (fine-tuned classifier)
-Evaluation system for RAG responses
-Memory optimization (long-term user profile memory)
-Scaling vector database for more cities
-Advanced caching layer
 
-### ⭐ If you like this project
+# ⚠️ Current Limitations
 
-Give it a star ⭐ on GitHub and feel free to contribute or fork it.
+* Supports a limited number of cities
+* No flight booking integration
+* No hotel booking integration
+* Intent classification is currently based on prompting and may occasionally misclassify ambiguous user requests.
+* No long-term memory
 
+---
+
+# 🧪 Future Improvements
+
+* Improve intent classification accuracy and ambiguity handling
+* Add city-to-city distance calculation
+* Recommend transportation methods (car, train, flight)
+* Retrieve attraction addresses and location information
+* Integrate weather-aware travel recommendations
+* Expand city knowledge base and tourism data
+* Evaluation framework for RAG quality assessment
+* Advanced memory management
+* Response caching layer
+* Production monitoring and observability
+
+
+
+---
+
+# ⭐ Project Status
+
+Current Version: **v1.0.0**
+
+This version represents the first stable release of the AI Travel Assistant.
