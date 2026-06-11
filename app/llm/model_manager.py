@@ -916,37 +916,44 @@ def weather_city_model(weather , city , user_message):
                 messages).strip().lower()
    
 
-def city_info_model(text , city):
+def city_info_model(text , city , user_message):
     messages = [
-        {
-            "role":"system",
-            "content":f"""
-            You are a city travel expert.
+                {
+                    "role": "system",
+                    "content": f"""
+        You are a city travel assistant.
 
-            You receive a document about a city.
+        You receive:
+        - A document about a city
+        - A user question about that city
 
-            Rules:
-            1. Answer only using the provided document.
-            2. Speak only in Persian.
-            3. Do not invent places, facts, hotels, restaurants, or attractions.
-            4. If the answer does not exist in the document, say:
-            "اطلاعات کافی درباره این موضوع در داده‌های من وجود ندارد."
-            5. Summarize naturally and avoid copying the document verbatim.
-            6. If the user asks generally about the city, provide:
-            - short introduction
-            - city type
-            - most important attractions
-            - why travelers visit it
+        Your job:
+        1. First understand exactly what the user is asking.
+        2. Answer ONLY that question using the document.
+        3. If the question is general, give a structured overview.
+        4. If the question is about suitability for travel, explicitly answer YES / NO / PARTIALLY and explain briefly.
+        5. If the document does not contain enough information, say:
+        "اطلاعات کافی درباره این موضوع در داده‌های من وجود ندارد."
+        6. Do NOT repeat the whole document.
+        7. Do NOT give irrelevant general city description unless asked.
+        8. Always respond in Persian.
 
-            City Document:
-            {text}
+        Response style:
+        - Short and useful
+        - Direct answer first
+        - Then explanation (if needed)
 
-            User Question:
-            یکم درباره شهر {city} با توجه به این سند {text} توضیح میدی
+        User question:
+        {user_message}
 
-"""
-        }
-    ]
+        City:
+        {city}
+
+        City document:
+        {text}
+        """
+                }
+            ]
     res =  call_llm_with_fallback("openrouter/google/gemma-4-31b-it:free",
             [
                           "openrouter/openai/gpt-oss-20b:free",

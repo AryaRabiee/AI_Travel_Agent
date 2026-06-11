@@ -74,7 +74,7 @@ def rag_answer(user_message):
             with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
                 doc = f.read()
 
-            return city_info_model(doc, city)
+            return city_info_model(doc, city , user_message)
         if intent == "generate_plan":
             logger.info("go to intent generatre_plan")
             city = city_indent or conversation_state.get("current_city")
@@ -218,7 +218,7 @@ def rag_answer(user_message):
         with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
             doc = f.read()
 
-        return city_info_model(doc, city)
+        return city_info_model(doc, city , user_message)
 
     
     if intent == "compare_city":
