@@ -17,6 +17,11 @@ The goal of this project is to explore real-world AI Engineering concepts such a
 
 ---
 
+# 🎬 Demo
+
+![Demo](assets/demo.gif)
+
+
 # 🚀 Features
 
 ## Intelligent Conversation System
