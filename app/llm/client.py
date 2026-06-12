@@ -88,9 +88,9 @@ def rag_answer(user_message):
                 return direct_generate_plan(city, days, doc)
             conversation_state["stage"] = "WAIT_FOR_PLAN"
             if not city:
-                return "برای کدوم شهر برنامه میخوای؟"
+                return "مقصدتون کدوم شهر هست؟"
             generate_plan["city"] = city
-            return "چند روز سفر مدنظرته؟"
+            return "چند روز سفر مدنظرتونه؟"
         
         if intent == "compare_city":
             city1 = intent_data["city1"]
@@ -149,7 +149,7 @@ def rag_answer(user_message):
         if generate_plan["city"] is None:
 
             if user_message not in city_list:
-                return "لطفا یکی از شهرهای پشتیبانی شده را وارد کنید"
+                return "لطفا یکی از شهرهای پشتیبانی شده را وارد (تهران-شیراز-یزد-رشت-اصفهان-مشهد)"
 
             generate_plan["city"] = user_message
             logger.info("generate_plan is %s" , generate_plan)
@@ -203,7 +203,7 @@ def rag_answer(user_message):
         city = city_indent or conversation_state.get("current_city")
         city_fa = translate(city)[0]
         if city is None:
-            return "برای کدوم شهر؟"
+            return "کدوم شهر مدنظرتونه؟"
 
         weather = get_weather_data(city_fa)
         return weather_city_model(weather, city_fa , user_message)
@@ -213,7 +213,7 @@ def rag_answer(user_message):
         city = city_indent or conversation_state.get("current_city")
         city_name_en = translate(city)[1]
         if city is None:
-            return "درباره کدوم شهر؟"
+            return "درباره کدوم شهر میخواین بدونین؟"
 
         with open(f"../data/{city_name_en}.md", "r", encoding="utf-8") as f:
             doc = f.read()
@@ -249,9 +249,9 @@ def rag_answer(user_message):
             return direct_generate_plan(city, days, doc)
         conversation_state["stage"] = "WAIT_FOR_PLAN"
         if not city:
-            return "برای کدوم شهر برنامه میخوای؟"
+            return "کدوم شهر مدنظرتونه؟"
         generate_plan["city"] = city
-        return "چند روز سفر مدنظرته؟"
+        return "چند روز سفر مدنظرتونه؟"
 
 
     if intent == "modify_plan":
