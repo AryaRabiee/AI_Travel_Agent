@@ -26,12 +26,12 @@ cities_p = {
     "اصفهان":"esfahan",
 }
 CITY_SIGNATURE = {
-    "رشت": "nature",
+    "rasht": "nature",
     "tehran": "recreational",
-    "مشهد": "religious",
-    "شیراز":"historical",
-    "یزد":"historical",
-    "اصفهان":"historical"
+    "mashhad": "religious",
+    "shiraz":"historical",
+    "yazd":"historical",
+    "esfahan":"historical"
 }
 
 intrest_dict = {
