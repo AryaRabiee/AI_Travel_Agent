@@ -16,6 +16,10 @@ to create a more reliable and context-aware travel assistant.
 The goal of this project is to explore real-world AI Engineering concepts such as routing, RAG pipelines, conversation state management, retrieval systems, prompt engineering, and production-oriented LLM application design.
 
 ---
+# 🎬 Demo
+
+![Demo](assets/demo.gif)
+
 
 # 🚀 Features
 
