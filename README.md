@@ -1,19 +1,26 @@
 # 🧳 AI Travel Assistant
 
-AI Travel Assistant is an LLM-powered travel planning system that helps users discover destinations, compare cities, retrieve travel information, check weather conditions, and generate personalized travel itineraries through a conversational interface.
+AI Travel Assistant is a conversational system that helps users explore travel destinations, get city information, check weather conditions, and generate personalized travel plans.
 
-Unlike a traditional chatbot, this project combines:
 
-* Intent Classification
-* Stateful Conversation Management
-* Retrieval-Augmented Generation (RAG)
-* Vector Search
-* Multi-model LLM Fallback
-* Personalized Travel Recommendation
 
-to create a more reliable and context-aware travel assistant.
 
-The goal of this project is to explore real-world AI Engineering concepts such as routing, RAG pipelines, conversation state management, retrieval systems, prompt engineering, and production-oriented LLM application design.
+Unlike a traditional chatbot, this project combines multiple AI components to provide more structured and context-aware responses:
+
+- Intent Classification to understand user requests
+- Stateful Conversation Management to maintain context during multi-turn chats
+- Retrieval-Augmented Generation (RAG) for city-related information
+- Vector Search for semantic retrieval
+- Multi-model LLM fallback for reliability
+- Personalized travel recommendation based on user preferences
+
+The System can :
+- Suggest suitable cities for travel
+- Generate personalized travel itineraries
+- Answer questions about cities and weather conditions   
+- Compare different destinations
+
+This project was built as a hands-on learning experience to improve my skills in AI system design, especially in areas such as RAG pipelines, conversation management, and building real-world LLM-based applications.
 
 ---
 # 🎬 Demo
@@ -23,47 +30,36 @@ The goal of this project is to explore real-world AI Engineering concepts such a
 
 # 🚀 Features
 
-## Intelligent Conversation System
-
-* Multi-turn dialogue support
-* Conversation state management
-* Context-aware responses
-* Workflow handling for travel planning
-
 ## Travel Recommendation Engine
 
-* User profile generation
-* Personalized destination recommendation
-* Travel preference analysis
+* Generate a basic user profile based on the conversation and user preferences
+* Recommend destinations based on user interests
+* Recommand the plan for the city by cheking the users interers and recommand the place of city same to users interser
+* Create travel plans using a combination of content-based filtering and cosine similarity to match cities with user profile
 
-## Travel Plan Generation
 
-* Multi-day itinerary generation
-* Personalized planning based on user profile
+## Intelligent Conversation System
+
+* Multi-turn dialogue support with context awareness
+* Conversation state management to track user progress during interaction
+* History-aware responses to maintain continuity across different stages of conversation
 
 ## City Information Retrieval (RAG)
 
-* Retrieval-based city knowledge system
-* Context-aware city question answering
-* Grounded responses using local knowledge base
+* Retrieve city information from a local data source for answering user queries
+* Provide context-aware responses using stored city data and conversation history
+* Compare cities based on structured information from the dataset
 
 ## Weather Assistant
 
-* Real-time weather retrieval
-* Travel suitability analysis
-* Offline fallback support
+* Fetch real-time weather data using external APIs
+* Fallback to a local offline dataset when the API is unavailable or fails
 
 ## City Comparison
 
 * Compare multiple destinations
 * Travel decision assistance
 
-## Reliability Features
-
-* Multi-model fallback strategy
-* Basic error handling
-* Offline weather fallback
-* State recovery mechanisms
 
 ---
 
@@ -170,6 +166,7 @@ Local city knowledge base used by the RAG system.
 * Python
 * FastAPI
 * OpenRouter API
+* litellm
 * RAG
 * Vector Database(faiss)
 * Embeddings
@@ -228,7 +225,7 @@ docker run -p 8000:8000 --env-file .env travel-assistant
 
 # ⚠️ Current Limitations
 
-* Supports a limited number of cities
+* Supports a limited number of cities(6 cities)
 * No flight booking integration
 * No hotel booking integration
 * Intent classification is currently based on prompting and may occasionally misclassify ambiguous user requests.
