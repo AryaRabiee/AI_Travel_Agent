@@ -35,7 +35,7 @@ This project was built as a hands-on learning experience to improve my skills in
 * Generate a basic user profile based on the conversation and user preferences
 * Recommend destinations based on user interests
 * Recommand the plan for the city by cheking the users interers and recommand the place of city same to users interser
-* Create travel plans using a combination of content-based filtering and cosine similarity to match cities with user profile
+* Generate travel plans using a combination of content-based filtering (60%) and cosine similarity (40%) based on user preferences
 
 
 ## Intelligent Conversation System
