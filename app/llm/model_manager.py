@@ -5,7 +5,8 @@ from openai import OpenAI
 import os
 
 api_key = os.getenv("SECEND_ACC_ROUTE_API_KEY")
-
+base_url = os.getenv("BASEURL")
+api_key_open_ai = os.getenv("API_KEY_OPEN_AI")
 
 def call_llm_with_fallback(primary_model, backup_model, messages):
     resp = completion(
@@ -195,8 +196,8 @@ def detect_intent(user_message ,recent_history, current_city ):
 
 def detect_intent_with_openai(user_message ,recent_history, current_city):
     client = OpenAI(
-  api_key="79bdcc2f-ca9c-533a-a933-b28f349a62ae",
-  base_url="https://arvancloudai.ir/gateway/models/Gemma-4-31B-IT/47ec1qlBh0et655_cdFja10d_1ln6ARo4-DA5iu-hE3K3o9Fj7mQ5tkA2wuHMcZK4TIH8kaIXUeLSHQ6GM27pVuwyCis69OhOgRzK2m085YL3FyTcQgSGox19mN7X13Y1wL6fs-wVyRoOleQLC1OGGPdfQuj4kyhwycHS5aZskD-MSY5-RuzK67i4x2tztOGBRAQ7yrs1BqyTC3YNf6kEZzvbmyJqRoaeG4TVJL2-zgV-NWJMVS2X--tt8E0Knk6Das/v1",
+  api_key=api_key_open_ai,
+  base_url = base_url,
 )
 
     response = client.chat.completions.create(
@@ -795,8 +796,8 @@ No extra messages or explanations should be included. After asking, **pause comp
 def chat_open_ai(user_message):
     global history
     client = OpenAI(
-    api_key="79bdcc2f-ca9c-533a-a933-b28f349a62ae",
-    base_url="https://arvancloudai.ir/gateway/models/Gemma-4-31B-IT/47ec1qlBh0et655_cdFja10d_1ln6ARo4-DA5iu-hE3K3o9Fj7mQ5tkA2wuHMcZK4TIH8kaIXUeLSHQ6GM27pVuwyCis69OhOgRzK2m085YL3FyTcQgSGox19mN7X13Y1wL6fs-wVyRoOleQLC1OGGPdfQuj4kyhwycHS5aZskD-MSY5-RuzK67i4x2tztOGBRAQ7yrs1BqyTC3YNf6kEZzvbmyJqRoaeG4TVJL2-zgV-NWJMVS2X--tt8E0Knk6Das/v1",
+    api_key=api_key_open_ai,
+    base_url=base_url,
 )
 
     response = client.chat.completions.create(
