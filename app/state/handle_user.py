@@ -35,21 +35,11 @@ def create_profile(message):
 def handle_user_message(message):
 
     if user_profile["is_travel"] is None:
-        # related = is_travel_related(message)
-        related = "yes" # for test
-        print("related is", related)
-
-        if related == "yes":
-            user_profile["is_travel"] = True
-            user_profile["step"] = 0
-            return next_travel_question()
+        user_profile["is_travel"] = True
+        user_profile["step"] = 0
+        return next_travel_question()
         
-        # if related =="smalltalk":
-        #     return fall_back(message)
 
-        # else:
-        #     user_profile["is_travel"] = False
-        #     return "سلام من یک دستیار سفر هستم و فقط به سوالات مربوط به سفر پاسخ میدم"
 
     step = user_profile["step"]
     print("Step is" ,step)
