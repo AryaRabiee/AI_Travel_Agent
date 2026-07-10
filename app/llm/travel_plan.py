@@ -9,7 +9,6 @@ def user_want_plan(message):
     return msg in ['باشه',"بده","اره","بله","یه پلن بده","اره میخوام پلن بدی","پلن میخوام","باشه بده","مایل هستم","آره","yes"]
 
 def places(profile_user, top_city):
-    print("start func place")
     with open(f"../plan_data/{top_city}.json", "r", encoding="utf-8") as f:
         doc = json.load(f)
     candidate = []
@@ -71,10 +70,10 @@ def places(profile_user, top_city):
                 min(need, len(remaining_pool))
             )
         )
-    candidate_text = ""
+    selected_text  = ""
 
-    for place in candidate:
-        candidate_text += f"""
+    for place in selected:
+        selected_text += f"""
     نام: {place["name"]}
     نوع: {place["type"]}
     اولویت: {place["priority"]}
@@ -82,8 +81,4 @@ def places(profile_user, top_city):
     توضیح: {place["description"]}
 
     """
-    return candidate_text
-
-
-# def plan_agent(candidate , top_city , days):
-#     reply = plan_agent(top_city ,candidate ,days)
+    return selected_text
