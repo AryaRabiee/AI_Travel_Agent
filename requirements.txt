@@ -1,6 +1,5 @@
-faiss==1.5.3
+faiss-cpu==1.5.3
 fastapi==0.136.3
-fastapi_swagger==0.4.50
 litellm==1.88.1
 numpy==2.4.6
 openai==2.41.1
@@ -8,3 +7,4 @@ pandas==3.0.3
 pydantic==2.13.4
 python-dotenv==1.2.2
 Requests==2.34.2
+uvicorn
