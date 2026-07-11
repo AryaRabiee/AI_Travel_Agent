@@ -3,7 +3,7 @@ import json
 import os
 
 
-api_get_embedding = os.getenv("EMBEDDING_API")
+api_get_embedding = os.getenv("EMBEDDING_API_KEY")
 url_embedding = os.getenv("EMBEDDING_URL")
 cities_data = []  
 
