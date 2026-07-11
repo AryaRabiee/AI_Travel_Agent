@@ -22,11 +22,7 @@ def call_llm_with_fallback(primary_model, backup_model, messages):
 
 
 def detect_intent(user_message, recent_history, current_city):
-    """
-    Intent رو detect کن
-    recent_history: list of {"role": "...", "content": "..."}
-    current_city: string یا None
-    """
+
     
     logger.info("detect_intent called | message: %s", user_message)
     
