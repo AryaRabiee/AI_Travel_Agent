@@ -3,7 +3,7 @@ from llm.log import logger
 from state.memory import offline_weather
 import os
 
-weather_token = os.getenv("WEATHER_TOKEN")
+weather_token = os.getenv("WEATHER_API_KEY")
 
 def get_weather_data(city):
 
