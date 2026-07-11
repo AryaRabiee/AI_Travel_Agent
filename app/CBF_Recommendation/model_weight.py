@@ -3,9 +3,9 @@ import json
 from llm.log import logger
 import os
 
-model_name = os.getenv("MODEL_NAME")
-URL = os.getenv("URL")
-api_for_weight = os.getenv("EMBEDDING_API")
+model_name = os.getenv("OPENROUTER_MODEL")
+URL = os.getenv("OPENROUTER_URL")
+api_for_weight = os.getenv("EMBEDDING_API_KEY")
 def get_weight_for_feature(user_profile: str):
     profile_text = f"""
         days: {user_profile["profile"]['days']}
