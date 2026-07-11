@@ -6,9 +6,10 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_swagger import patch_fastapi
 from dotenv import load_dotenv
+from state.session_store import SessionStore
 
 load_dotenv()
-
+session_store = SessionStore()
 app = FastAPI(title="AI Travel Assistant" , summary="This is a AI_travel asisstant", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
@@ -25,5 +26,15 @@ def read_root():
 
 @app.post("/chat")
 def chat(user_message: UserMessage):
-    reply = rag_answer(user_message.message)
-    return reply
+
+    session_id, session = session_store.get(user_message.session_id)
+
+    reply = rag_answer(
+        user_message.message,
+        session
+    )
+
+    return {
+        "session_id": session_id,
+        "reply": reply
+    }
