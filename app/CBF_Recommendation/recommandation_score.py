@@ -1,12 +1,12 @@
 from .City_Matrix import feaute_weight ,city_df
-from .model_weight import get_weight_for_feature
+from .model_weight import get_weights_from_profile
 import pandas as pd
 import numpy as np
 from rag.vector_search import llm_select_best_city
 from rag.retrieval import retrieve_top_cities
 from llm.log import logger
-ALPHA = 0.6
-BETA = 0.4
+ALPHA = 0.7
+BETA = 0.3
 
 def top_city(user_profile):
     logger.info("profile is %s", user_profile)
@@ -21,7 +21,7 @@ def top_city(user_profile):
     logger.info("in top city llm_weight is %s" , llm_weight)
     algo_norm_score_llm = (llm_weight - llm_weight.min()) / (llm_weight.max() - llm_weight.min() + 1e-8)
     logger.info("in top city algo_norm_score_llm is %s" , algo_norm_score_llm)
-    model_score = get_weight_for_feature(user_profile)
+    model_score = get_weights_from_profile(user_profile)
     logger.info("in top city model_score is %s" , model_score)
     model_weight = pd.DataFrame([model_score])
     logger.info("in top city model_weight is %s" , model_weight)
