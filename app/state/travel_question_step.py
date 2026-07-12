@@ -1,6 +1,6 @@
-from .state_user import user_profile
+from llm.log import logger
 
-def next_travel_question():
+def next_travel_question(user_profile):
     if user_profile["step"] == 0:
         return "(برای خروج از این حالت 0 را وارد کنید) چند روز قصد سفر دارید؟"
     if user_profile["step"] == 1:
