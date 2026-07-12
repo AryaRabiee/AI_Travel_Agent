@@ -1,4 +1,3 @@
-from .state_user import user_profile
 from .travel_question_step import next_travel_question
 from .validation import validation_answer
 from llm.log import logger
@@ -7,21 +6,48 @@ from llm.log import logger
 
 
 QUESTIONS = [
-    {"key": "days", "type": "number", "min": 1, "max": 30},
-    {"key": "weather", "type": "enum", "values": ["گرم", "خنک", "سرد"]},
-    {"key": "places", "type": "enum", "values": ["شهری", "طبیعت", "تاریخی"]},
-    {"key": "budget", "type": "enum", "values": ["زیاد", "متوسط", "کم"]},
-    {"key": "interests", "type": "enum", "values": ["طبیعت", "نفریح", "خرید"]},
-    {"key": "description", "type": "description"},
-
-
+    {
+        "key": "days",
+        "type": "number",
+        "min": 1,
+        "max": 30,
+        "question": "چند روز قصد سفر دارید؟"
+    },
+    {
+        "key": "weather",
+        "type": "enum",
+        "values": ["گرم", "خنک", "سرد"],
+        "question": "چه نوع آب‌وهوایی دوست دارید؟"
+    },
+    {
+        "key": "places",
+        "type": "enum",
+        "values": ["شهری", "طبیعت", "تاریخی"],
+        "question": "به چه نوع جاهایی علاقه‌مندید؟"
+    },
+    {
+        "key": "budget",
+        "type": "enum",
+        "values": ["کم", "متوسط", "زیاد"],
+        "question": "بودجه تقریبی شما چقدره؟"
+    },
+    {
+        "key": "interests",
+        "type": "enum",
+        "values": ["طبیعت", "تفریح", "خرید"],
+        "question": "علاقه‌مندی خاصی دارید؟"
+    },
+    {
+        "key": "description",
+        "type": "description",
+        "question": "لطفا توضیحات کلی درباره مقصدتون بگین"
+    },
 ]
 
 
-
-def create_profile(message):
+def create_profile(message , session):
     logger.info("start func create profile v0")
-    user_profile_or_question = handle_user_message(message)
+    user_profile_or_question = handle_user_message(message,session)
     if not isinstance(user_profile_or_question , dict):
         logger.info("user profile %s" , user_profile_or_question)
         logger.info("User profile incomplete, asking for more info...")
@@ -31,17 +57,16 @@ def create_profile(message):
     return {"need_more_info": False, "profile": user_profile}
 
 
+def handle_user_message(message , session):
 
-def handle_user_message(message):
-
-    if user_profile["is_travel"] is None:
-        user_profile["is_travel"] = True
-        user_profile["step"] = 0
-        return next_travel_question()
+    if session.user_profile["is_travel"] is None:
+        session.user_profile["is_travel"] = True
+        session.user_profile["step"] = 0
+        return next_travel_question(session.user_profile)
         
 
 
-    step = user_profile["step"]
+    step = session.user_profile["step"]
     print("Step is" ,step)
 
     valid, result = validation_answer(step, message, QUESTIONS)
@@ -50,14 +75,13 @@ def handle_user_message(message):
     if not valid:
         return result  
     
-    user_profile[QUESTIONS[step]["key"]] = result
-    user_profile["step"] += 1
-    print("User profile is" , user_profile)
+    session.user_profile[QUESTIONS[step]["key"]] = result
+    session.user_profile["step"] += 1
+    print("User profile is" , session.user_profile)
 
-    nxt = next_travel_question()
+    nxt = next_travel_question(session.user_profile)
     print(nxt)
     if nxt is None:
-        return user_profile
+        return session.user_profile
 
     return nxt
-
