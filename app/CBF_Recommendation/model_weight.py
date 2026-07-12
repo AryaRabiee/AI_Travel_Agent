@@ -3,57 +3,132 @@ import json
 from llm.log import logger
 import os
 
-model_name = os.getenv("OPENROUTER_MODEL")
-URL = os.getenv("OPENROUTER_URL")
-api_for_weight = os.getenv("EMBEDDING_API_KEY")
-def get_weight_for_feature(user_profile: str):
-    profile_text = f"""
-        days: {user_profile["profile"]['days']}
-        weather: {user_profile["profile"]['weather']}
-        places: {user_profile["profile"]['places']}
-        budget: {user_profile["profile"]['budget']}
-        interests: {user_profile["profile"]['interests']}
-        description: {user_profile["profile"]['description']}
-        """
-    url = URL
 
-    headers = {
-        "Authorization": f"Bearer {api_for_weight}",
-        "Content-Type": "application/json"
+def get_weights_from_profile(user_profile):
+
+
+    base_weights = {
+        "religious": 0,
+        "historical": 0,
+        "modern_city": 0,
+        "shopping": 0,
+        "nightlife": 0,
+        "expensive": 0,
+        "hot": 0,
+        "cold": 0,
+        "four_seasons": 0,
+        "nature": 0,
     }
+    
+    weights = base_weights.copy()
+    
+    logger.info("Base weights: %s", weights)
+    logger.info("Adjusting for profile: %s", user_profile)
+    
 
-    messages = [
-        {"role": "system", "content":"""
-                                You are an AI assistant that reads a user profile and returns a score for each travel feature.
-                                Features: religious, historical, modern_city, shopping, nightlife, expensive, hot, cold, four_seasons, nature
-                                Rules:
-                                - Output MUST be a valid JSON object.
-                                - Scores must be between 0 and 1.
-                                - Do NOT include any explanation or extra text.
-                                - Only output the features listed above.
-                                - You should give the score for all feature
-"""},
-        {"role": "user", "content":profile_text},
-    ]
+    places = user_profile.get("places", "")
+    
+    if places == "تاریخی":
+        weights["historical"] = 0.85
+        weights["religious"] = 0.7
+        weights["modern_city"] = 0.4  
+        logger.debug("Adjusted for places=تاریخی")
+    
+    elif places == "طبیعت":
+        weights["nature"] = 0.9
+        weights["four_seasons"] = 0.75
+        weights["modern_city"] = 0.3  
+        weights["shopping"] = 0.35
+        weights["nightlife"] = 0.3
+        logger.debug("Adjusted for places=طبیعت")
+    
+    elif places == "شهری":
+        weights["modern_city"] = 0.8
+        weights["shopping"] = 0.85
+        weights["nightlife"] = 0.65
+        weights["nature"] = 0.15
 
-    payload = {
-        "model": model_name,
-        "messages": messages
-    }
+    weather = user_profile.get("weather", "")
+    
+    if weather == "گرم":
+        weights["hot"] = 0.8  
+        weights["cold"] = 0.05  
+        logger.debug("Adjusted for weather=گرم")
+    
+    elif weather == "خنک":
+        weights["cold"] = 0.75
+        weights["four_seasons"] = 0.65
+        weights["nature"] = 0.55
+        weights["hot"] = 0.05
+        logger.debug("Adjusted for weather=خنک")
+    
+    elif weather == "سرد":
+        weights["cold"] = 0.8
+        weights["four_seasons"] = 0.45
+        weights["hot"] = 0.05    
+        logger.debug("Adjusted for weather=سرد")
 
-    response = requests.post(url, json=payload, headers=headers)
+    budget = user_profile.get("budget", "")
+    
+    if budget == "زیاد":
+        weights["expensive"] = 0.85  
+        weights["shopping"] = 0.65
+        weights["nightlife"] = 0.55
+        logger.debug("Adjusted for budget=زیاد")
+    
+    elif budget == "متوسط":
+        weights["expensive"] = 0.5 
+        logger.debug("Adjusted for budget=متوسط")
+    
+    elif budget == "کم":
+        weights["expensive"] = 0.05
+        weights["shopping"] = 0.2
+        weights["nature"] = 0.75    
+        logger.debug("Adjusted for budget=کم")
+    
 
-    if response.status_code != 200:
-        logger.error("ERROR: %s", response.text)
-        return False
+    interests = user_profile.get("interests", "")
+    
+    if "طبیعت" in interests:
+        weights["nature"] = min(weights["nature"] + 0.1, 1.0)
+        weights["four_seasons"] = min(weights["four_seasons"] + 0.1, 1.0)
+        logger.debug("Boosted nature for interests=طبیعت")
+    
+    if "خرید" in interests:
+        weights["shopping"] = min(weights["shopping"] + 0.15, 1.0)
+        weights["modern_city"] = min(weights["modern_city"] + 0.1, 1.0)
+        weights["expensive"] = min(weights["expensive"] + 0.15, 1.0)
+        logger.debug("Boosted shopping for interests=خرید")
+    
+    if "تفریح" in interests:
+        weights["nightlife"] = min(weights["nightlife"] + 0.1, 1.0)
+        weights["modern_city"] = min(weights["modern_city"] + 0.1, 1.0)
+        logger.debug("Boosted nightlife for interests=تفریح")
+    
+    if "کوه‌نوردی" in interests or "کوهنوردی" in interests:
+        weights["nature"] = min(weights["nature"] + 0.25, 1.0)
+        weights["four_seasons"] = min(weights["four_seasons"] + 0.15, 1.0)
+        weights["cold"] = min(weights["cold"] + 0.1, 1.0)
+        logger.debug("Boosted nature/cold for interests=کوه‌نوردی")
+    
+    if "غذا" in interests:
+        weights["modern_city"] = min(weights["modern_city"] + 0.15, 1.0)
+        weights["expensive"] = min(weights["expensive"] + 0.1, 1.0)
+        logger.debug("Boosted modern_city for interests=غذا")
 
-    scores = response.json()["choices"][0]["message"]["content"].strip().lower()
-    try:
-        user_weights = json.loads(scores)
-        logger.debug("User weights: %s, Type: %s", user_weights, type(user_weights))
-    except json.JSONDecodeError as e:
-        logger.error("JSON Error: %s", e)
-        logger.error("RAW: %s", scores)
-        return {}
+    days = user_profile.get("days", 0)
+    
+    if days and days <= 2:
+        weights["modern_city"] = min(weights["modern_city"] + 0.1, 1.0)
+        logger.debug("Boosted modern_city for short trip (%d days)", days)
+    
+    elif days and days >= 7:
+        weights["nature"] = min(weights["nature"] + 0.1, 1.0)
+        weights["four_seasons"] = min(weights["four_seasons"] + 0.1, 1.0)
+        logger.debug("Boosted nature for long trip (%d days)", days)
 
-    return user_weights
+    for key in weights:
+        weights[key] = min(max(weights[key], 0.0), 1.0)
+    
+    logger.info("Final adjusted weights: %s", weights)
+    return weights
