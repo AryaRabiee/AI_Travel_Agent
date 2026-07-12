@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 api_get_embedding = os.getenv("EMBEDDING_API_KEY")
-URL = os.getenv("OPENROUTER_URL")
+URL = os.getenv("EMBEDDING_URL")
 def get_embedding(text:str):
     #url = "https://api.jina.ai/v1/embeddings"
     url = URL
