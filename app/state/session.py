@@ -5,7 +5,17 @@ class Session:
 
     history: list = field(default_factory=list)
 
-    user_profile: dict | None = None
+    user_profile: dict  = field(default_factory=lambda:{
+    "is_travel": None,
+    "step": 0,
+    "days": None,
+    "weather": None,
+    "places": None,
+    "budget": None,
+    "interests": None,
+    "description": None
+
+    })
 
     conversation_state: dict = field(default_factory=lambda: {
         "stage": "NORMAL",
@@ -13,6 +23,10 @@ class Session:
         "current_city": None,
     })
 
+    conversation_state_memory: dict = field(default_factory=lambda: {
+        "phase": "INIT",
+        "best_city": None
+    })
     generate_plan: dict = field(default_factory=lambda: {
         "city":None,
         "city_message":"لطفا شهر خود را انتخاب کنید",
