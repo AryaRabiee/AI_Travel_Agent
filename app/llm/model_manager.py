@@ -409,7 +409,6 @@ def chat(user_message, session):
     """
     logger.info("chat called | message: %s", user_message)
     
-    # ✅ تاریخچه رو محدود کن (آخر 10 پیام)
     recent_history = session.history[-10:]
     
     messages = [
@@ -435,7 +434,6 @@ Rules:
     
     messages.extend(recent_history)
     
-    # ✅ کاربر پیام رو اضافه کن
     messages.append({"role": "user", "content": user_message})
     
     logger.info("Sending %d messages to LLM", len(messages))
@@ -453,10 +451,8 @@ Rules:
             messages
         )
         
-        logger.info("LLM response: %s", res[:100])  # آخر 100 کاراکتر
-        
-        # ✅ پاسخ رو برگردان
-        # (تاریخچه در rag_answer ذخیره میشه)
+        logger.info("LLM response: %s", res[:100])
+
         return res
         
     except Exception as e:
@@ -468,10 +464,7 @@ Rules:
 
 
 def weather_city_model(weather, city, user_message, session):
-    """
-    آب‌وهوا
-    ✅ user_profile اختیاری
-    """
+
     
     preference_note = ""
     
@@ -519,10 +512,7 @@ User's question: {user_message}"""
    
 
 def city_info_model(doc, city, user_message, session):
-    """
-    اطلاعات شهر
-    ✅ user_profile اختیاری
-    """
+
     
     interests_context = ""
     
@@ -719,7 +709,6 @@ def compare_two_city_model(city1, city2, doc1, doc2, session):
     ✅ user_profile اختیاری است
     """
     
-    # ✅ اگر پروفایل داشت، استفاده کن
     interests_context = ""
     
     if session.user_profile:
@@ -740,7 +729,6 @@ Consider these preferences when comparing cities.
 Which city better matches their interests?
 """
     
-    # ✅ اگر پروفایل نداشت، مقایسه عمومی
     if not interests_context:
         interests_context = """
 No user preferences available.
