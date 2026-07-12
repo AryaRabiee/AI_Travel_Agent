@@ -57,4 +57,3 @@ def validation_answer(step, user_message, questions):
 
 
     return False, "پاسخ نامعتبر است، لطفاً دوباره تلاش کنید."
-
