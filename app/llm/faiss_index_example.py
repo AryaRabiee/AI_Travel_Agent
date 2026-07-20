@@ -3,7 +3,7 @@ import json
 import numpy as np
 
 
-with open("llm/cities_embeddings_city_info.json" , "r" , encoding='utf-8') as f:
+with open("llm/cities_embeddings_city_info_new_open.json" , "r" , encoding='utf-8') as f:
     data = json.load(f)
 
 embedding = np.array([item["embedding"] for item in data] , dtype="float32")
@@ -14,5 +14,5 @@ d = embedding.shape[1]
 index = faiss.IndexFlatIP(d)
 index.add(embedding)
 
-faiss.write_index(index , "cities_flat_info.index")
+faiss.write_index(index , "cities_flat_info_new_open.index")
 
