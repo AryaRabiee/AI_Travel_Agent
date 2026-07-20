@@ -1,19 +1,19 @@
 from llm.log import logger
-
+from .validation import QUESTIONS
 def next_travel_question(user_profile):
-    if user_profile["step"] == 0:
-        return "(برای خروج از این حالت 0 را وارد کنید) چند روز قصد سفر دارید؟"
-    if user_profile["step"] == 1:
-        return " (برای خروج از این حالت 0 را وارد کنید) چه نوع آب‌وهوایی دوست دارید؟ (گرم، خنک، سرد)"
-    if user_profile["step"] == 2:
-        return " (برای خروج از این حالت 0 را وارد کنید) به چه نوع جاهایی علاقه‌مندید؟ ( زیارتی ,تاریخی، طبیعت، شهری)"
-    if user_profile["step"] == 3:
-        return " (برای خروج از این حالت 0 را وارد کنید)  (کم ,متوسط , زیاد)بودجه تقریبی شما چقدره؟"
-    if user_profile["step"] == 4:
-        return " (برای خروج از این حالت 0 را وارد کنید) علاقه‌مندی خاصی دارید؟ (,تفریح , غذا، خرید، کوه‌نوردی , طبیعت)"
-    if user_profile["step"] == 5:
-        return " (برای خروج از این حالت 0 را وارد کنید) برای اینکه بهتر بتونم به شما پیشنهاد بدم لطفا یه توضیحات کلی درباره مقصدی که میخواین برین بگین"
-
-    return None 
+    step = user_profile["step"]
+    
+    if step not in QUESTIONS:
+        return None  # تمام شد
+    
+    q = QUESTIONS[step]
+    question = q["question"]
+    
+    # گزینه‌ها اضافه کن
+    if q["type"] == "choices":
+        choices = ", ".join(q["choices"])
+        return f"{question}\n({choices})"
+    
+    return question
 
 

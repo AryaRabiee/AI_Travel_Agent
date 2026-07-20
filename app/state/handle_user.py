@@ -5,44 +5,44 @@ from llm.log import logger
 
 
 
-QUESTIONS = [
-    {
-        "key": "days",
+QUESTIONS = {
+    0: {
+        "question": "چند روز قصد سفر دارید؟",
         "type": "number",
         "min": 1,
         "max": 30,
-        "question": "چند روز قصد سفر دارید؟"
+        "key": "days"  # ✅ اضافه کن
     },
-    {
-        "key": "weather",
-        "type": "enum",
-        "values": ["گرم", "خنک", "سرد"],
-        "question": "چه نوع آب‌وهوایی دوست دارید؟"
+    1: {
+        "question": "چه نوع آب‌وهوایی دوست دارید؟",
+        "type": "choices",
+        "choices": ["گرم", "خنک", "سرد", "معتدل"],
+        "key": "weather"  # ✅
     },
-    {
-        "key": "places",
-        "type": "enum",
-        "values": ["شهری", "طبیعت", "تاریخی"],
-        "question": "به چه نوع جاهایی علاقه‌مندید؟"
+    2: {
+        "question": "به چه نوع جاهایی علاقه‌مندید؟",
+        "type": "choices",
+        "choices": ["تاریخی", "طبیعت", "شهری", "تفریحی","زیارتی"],
+        "key": "places"  # ✅
     },
-    {
-        "key": "budget",
-        "type": "enum",
-        "values": ["کم", "متوسط", "زیاد"],
-        "question": "بودجه تقریبی شما چقدره؟"
+    3: {
+        "question": "بودجه تقریبی شما چقدره؟",
+        "type": "choices",
+        "choices": ["کم", "متوسط", "زیاد"],
+        "key": "budget"  # ✅
     },
-    {
-        "key": "interests",
-        "type": "enum",
-        "values": ["طبیعت", "تفریح", "خرید"],
-        "question": "علاقه‌مندی خاصی دارید؟"
+    4: {
+        "question": "علاقه‌مندی خاصی دارید؟",
+        "type": "choices",
+        "choices": ["طبیعت","کوه نوردی","خرید", "غذا", "تفریح", "زیارتی"],
+        "key": "interests"  # ✅
     },
-    {
-        "key": "description",
+    5: {
+        "question": "برای اینکه بهتر بتونم به شما پیشنهاد بدم لطفا یه توضیحات کلی درباره مقصدی که میخواین برین بگین",
         "type": "description",
-        "question": "لطفا توضیحات کلی درباره مقصدتون بگین"
-    },
-]
+        "key": "description"  # ✅
+    }
+}
 
 
 def create_profile(message , session):
