@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI ,HTTPException
 from llm.client import ask_model ,rag_answer
 from models.message import UserMessage, BotResponse
 from fastapi.staticfiles import StaticFiles
@@ -26,13 +26,17 @@ def read_root():
 
 @app.post("/chat")
 def chat(user_message: UserMessage):
-
+    if not user_message.message or len(user_message.message.strip()) == 0:
+        raise HTTPException(status_code=400, detail="پیام خالی است")
+    
+    if len(user_message.message) > 1000:
+        raise HTTPException(status_code=400, detail="پیام خیلی طولانی است")
+    
+    message = user_message.message.strip()
+    
     session_id, session = session_store.get(user_message.session_id)
 
-    reply = rag_answer(
-        user_message.message,
-        session
-    )
+    reply = rag_answer(message, session)
 
     return {
         "session_id": session_id,
