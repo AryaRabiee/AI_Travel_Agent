@@ -5,6 +5,8 @@ from state.session import Session
 from openai import OpenAI
 import os
 from llm.log import logger
+import re
+
 
 api = os.getenv("OPENROUTER_API_KEY")
 api_key_open_ai = os.getenv("OPENAI_API_KEY")
@@ -182,6 +184,15 @@ Return ONLY valid JSON, no explanation."""
             "days": None,
             "goal": None
         }
+    except ValueError as e:
+        logger.error("Validation error: %s", e)
+        return {
+            "intent": "unknown",
+            "city": None,
+            "days": None,
+            "goal": None
+        }
+
     except Exception as e:
         logger.error("Error in detect_intent: %s", e)
         return {
@@ -213,16 +224,27 @@ def format_history_for_prompt(history):
 
 
 
-def city_agent(user_profile , candidates):
-
+def city_agent(user_profile, candidates):
+    """
+    Re-rank cities using LLM based on user profile
+    
+    Args:
+        user_profile: User preferences dict
+        candidates: List of (city, score, text) tuples
+        
+    Returns:
+        Dict of {city: score} or fallback if error
+    """
+    
+    if not candidates:
+        logger.warning("No candidates provided to city_agent")
+        return {}
+    
     cities_block = ""
     for city, score, text in candidates:
-        print(f"City: {city}\nScore: {score}")
         cities_block += f"City: {city}\nScore: {score}\nInfo: {text}\n\n"
 
-
-    system = """
-You are a travel recommendation re-ranking engine.
+    system = """You are a travel recommendation re-ranking engine.
 
 Input:
 - User profile
@@ -233,43 +255,129 @@ Input:
 Rules:
 - Use the algorithm score as the primary signal.
 - You may adjust each city score by at most ±10% based on semantic fit.
-- Rank all cities based on adjusted score.
-- Return ALL the city with score.
-- OUTPUT FORMAT MUST BE a JSON object: { "city_name": score, ... }
-- Do NOT include any extra text or explanation.
-"""
+- Return ALL cities with adjusted scores.
 
-    user = f"""
-USER PROFILE:
+OUTPUT FORMAT MUST BE ONLY:
+{"city_name": 0.85, "city_name2": 0.75, "city_name3": 0.65}
+
+- Scores must be numbers between 0 and 1
+- Do NOT include explanations or markdown
+- Do NOT include markdown code blocks (no ```)
+- ONLY output the JSON object"""
+
+    user = f"""USER PROFILE:
 {user_profile}
 
 CANDIDATE CITIES (from RAG):
 {cities_block}
 
-"""
-    messages= [
+Return ONLY JSON object with re-ranked scores."""
+    
+    messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user},
     ]
 
-    result = call_llm_with_fallback("openrouter/openai/gpt-oss-120b:free",            
-            [
-                          "openrouter/openai/gpt-oss-20b:free",
-                          "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
-                          "openrouter/google/gemma-4-26b-a4b-it:free",
-                          "openrouter/z-ai/glm-4.5-air:free",
-                          "openrouter/poolside/laguna-m.1:free"      
-            ],
-            messages)
-    print("result in model manager" , result , "The type is:" , type(result))
     try:
+        result = call_llm_with_fallback(
+            "openrouter/openai/gpt-oss-120b:free",            
+            [
+                "openrouter/openai/gpt-oss-20b:free",
+                "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+                "openrouter/google/gemma-4-26b-a4b-it:free",
+                "openrouter/z-ai/glm-4.5-air:free",
+                "openrouter/poolside/laguna-m.1:free"      
+            ],
+            messages
+        )
+        
+        logger.info(f"LLM result: {result}")
+        
+        # ✅ حاولت پاکیزه کردن
+        result = result.strip()
+        
+        # Remove markdown code blocks
+        if "```" in result:
+            result = result.replace("```json", "").replace("```", "").strip()
+        
+        # Try to parse JSON
         top_cities = json.loads(result)
-    except json.JSONDecodeError:
-        print("خطا: خروجی LLM JSON معتبر نیست!")
-        print("RAW OUTPUT:", result)
-        return None
+        
+        # ✅ Validate: تمام values باید number باشند
+        validated = {}
+        for city, score in top_cities.items():
+            try:
+                score_float = float(score)
+                # Clamp to 0-1
+                score_float = min(max(score_float, 0.0), 1.0)
+                validated[city] = score_float
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid score for {city}: {score}, using 0.5")
+                validated[city] = 0.5
+        
+        if validated:
+            logger.info(f"LLM scores validated: {validated}")
+            return validated
+        else:
+            logger.error("No valid scores after validation")
+            return _fallback_scores(candidates)
+            
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parse error: {e}")
+        logger.error(f"RAW OUTPUT: {result}")
+        
+        # ✅ Fallback 1: Regex extraction
+        try:
+            pattern = r'"([^"]+)"\s*:\s*([\d.]+)'
+            matches = re.findall(pattern, result)
+            
+            if matches:
+                extracted = {}
+                for city, score in matches:
+                    try:
+                        extracted[city] = min(max(float(score), 0.0), 1.0)
+                    except:
+                        pass
+                
+                if extracted:
+                    logger.info(f"Extracted scores via regex: {extracted}")
+                    return extracted
+        except Exception as e:
+            logger.error(f"Regex extraction failed: {e}")
+        
+        # ✅ Fallback 2: Use algorithm scores
+        logger.warning("Using algorithm scores as fallback")
+        return _fallback_scores(candidates)
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in city_agent: {e}")
+        return _fallback_scores(candidates)
 
-    return top_cities
+
+def _fallback_scores(candidates):
+    """
+    استفاده از algorithm scores اگه LLM fail شود
+    
+    Args:
+        candidates: List of (city, score, text)
+        
+    Returns:
+        Dict of {city: score}
+    """
+    fallback = {}
+    
+    if not candidates:
+        logger.warning("No candidates for fallback")
+        return {}
+    
+    for city, score, text in candidates:
+        try:
+            fallback[city] = min(max(float(score), 0.0), 1.0)
+        except:
+            fallback[city] = 0.5
+    
+    logger.info(f"Fallback scores: {fallback}")
+    return fallback
 
 def plan_agent(best_city, candidate,days , session):
     user_message = f"لطفا بهم به اندازه {days} روز برنامه سفر بده . این هم از مکان های برگزیده {candidate}"
@@ -412,24 +520,33 @@ def chat(user_message, session):
     recent_history = session.history[-10:]
     
     messages = [
-    {
-        "role": "system",
-        "content": """You are a friendly Persian-speaking Travel Assistant.
+        {
+            "role": "system",
+            "content": """You are a friendly Persian-speaking Travel Assistant.
 
-IMPORTANT: 
-- When user shows interest in travel/cities, ask EXACTLY once:
-  "میخواین با چند سوال، بهترین شهر برای سفرتون رو بهتون پیشنهاد بدهم؟"
-- Use this question ONLY when user clearly wants travel help
-- Never repeat this question
-- For other topics: answer naturally in Persian
+    IMPORTANT RULES:
+    1. You are ONLY a travel assistant - answer about travel topics ONLY
+    2. For non-travel topics, politely decline
+    3. Answer ALWAYS in Persian
+    4. Be friendly and helpful
+    5. Never invent information
 
-Rules:
-1. Answer in Persian only
-2. Never invent information
-3. For unknown: "اطلاعات دقیقی ندارم"
-4. For non-travel: "من فقط دستیار سفر هستم"
-5. Be friendly and concise"""
-    }
+    CONVERSATION FLOW:
+    - If user asks about travel/cities → answer helpfully
+    - If user asks non-travel question → say: "متاسفانه من فقط دستیار سفر هستم"
+    - Never suggest the questionnaire unless user explicitly asks for recommendations
+
+    TRAVEL TOPICS: cities, attractions, weather, hotels, restaurants, itineraries, travel tips
+
+    NON-TRAVEL TOPICS: sports, politics, cooking, movies, math, etc. → Decline politely
+
+    Example:
+    User: "کدام شهر خوب است؟" → ✅ Answer about cities
+    User: "واکسن رو کب بزنم؟" → ❌ Say: "من فقط دستیار سفر هستم"
+    User: "میخوام برنامه سفر" → ✅ Offer questionnaire
+
+    Be concise and natural."""
+        }
     ]
     
     messages.extend(recent_history)
@@ -623,7 +740,7 @@ def modify_plan_model(profile , goal , city , session):
                 """
         }
 
-    ],
+    ]
     try:
         res =  call_llm_with_fallback("openrouter/google/gemma-4-31b-it:free",
                 [
