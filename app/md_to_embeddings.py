@@ -27,7 +27,7 @@ for filename in os.listdir(DATA_DIR):
             "Authorization": f"Bearer {api_get_embedding}",
             "Content-Type": "application/json"
         }, data=json.dumps(data))
-
+        print(response)
         embedding = response.json()["data"][0]["embedding"]
 
         cities_data.append({
@@ -36,7 +36,7 @@ for filename in os.listdir(DATA_DIR):
             "embedding": embedding
         })
 
-with open("cities_embeddings_city_info.json", "w", encoding="utf-8") as f:
+with open("cities_embeddings_city_info_new_open.json", "w", encoding="utf-8") as f:
     json.dump(cities_data, f, ensure_ascii=False, indent=2)
 
-print("DONE! Embeddings saved in cities_embeddings_city_info.json")
+print("DONE! Embeddings saved in cities_embeddings_city_info_new_open.json")
