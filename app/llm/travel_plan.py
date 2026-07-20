@@ -14,22 +14,22 @@ def places(profile_user, top_city):
     candidate = []
 
     for place in doc["places"]:
-        if profile_user["profile"]["budget"] in place["budget"] or (
-            profile_user["profile"]["budget"] == "متوسط"
+        if profile_user["budget"] in place["budget"] or (
+            profile_user["budget"] == "متوسط"
             and "کم" in place["budget"]
         ):
             candidate.append(place)
 
-    total_place_count = profile_user["profile"]["days"] * 2
+    total_place_count = profile_user["days"] * 2
     interest_count_priority = round(total_place_count * 0.4)
     interest_count_random = round(total_place_count * 0.2)
     signature_count = round(total_place_count * 0.2)
 
     random_count = total_place_count - interest_count_priority - interest_count_random - signature_count
 
-    interest_places = [place for place in candidate if place["type"] == intrest_dict[profile_user["profile"]["interests"]]]
+    interest_places = [place for place in candidate if place["type"] == intrest_dict[profile_user["interests"]]]
     signature_places = [place for place in candidate if place["type"] == CITY_SIGNATURE[top_city]]
-    other_place = [place for place in candidate if place["type"] not in (CITY_SIGNATURE[top_city], intrest_dict[profile_user["profile"]["interests"]])]
+    other_place = [place for place in candidate if place["type"] not in (CITY_SIGNATURE[top_city], intrest_dict[profile_user["interests"]])]
 
     interest_places = sorted(interest_places, key=lambda x: x["priority"], reverse=True)
 
