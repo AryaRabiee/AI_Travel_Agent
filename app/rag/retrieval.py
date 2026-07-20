@@ -6,7 +6,7 @@ import faiss
 import numpy as np
 
 
-DATA_PATH = "rag/cities_embeddings_new_open.json"
+DATA_PATH = "rag/cities_embeddings_city_info_new_open.json"
 TOP_K = 3
 
 def retrieve_top_cities(user_profile):
@@ -26,7 +26,7 @@ def retrieve_top_cities(user_profile):
     query_emb = get_embedding(profile_text)
     query_emb = np.array([query_emb] , dtype="float32")
     faiss.normalize_L2(query_emb)
-    index = faiss.read_index("rag/cities_flat_open.index")
+    index = faiss.read_index("rag/cities_flat_info_new_open.index")
     k = 5
     D , I = index.search(query_emb , k)
 
@@ -44,7 +44,7 @@ def retrieve_top_cities(user_profile):
             city_info["text"],)
             
         )
-    top_cities.sort(key=lambda x : x[1] , reverse=True)
+    top_cities.sort(key=lambda x : x[1] , reverse=False)
 
     print("retrival candidate" , top_cities[:TOP_K])
 
