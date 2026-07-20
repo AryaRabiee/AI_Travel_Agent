@@ -400,14 +400,15 @@ def handle_wait_for_plan_stage(user_message, intent_data, session):
     
     if user_want_plan(user_message):
         candidate = places(
-                session.conversation_state["profile"],
+                session.user_profile,
                 session.conversation_state["top_city"]
             )
         session.conversation_state["stage"] = "NORMAL"
         return plan_agent(
                 session.conversation_state["top_city"],
                 candidate,
-                session.conversation_state["profile"]["profile"]["days"]
+                session.user_profile["days"],
+                session
             )
 
     if intent == "weather":
